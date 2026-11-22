@@ -17,3 +17,6 @@ export type { TraceRecord } from "./trace.js";
 export { MetricsCollector } from "./metrics.js";
 export type { MetricRecord } from "./metrics.js";
 export { scopeServices } from "./services.js";
+
+export { boundResult, assertResultBudget } from "./envelope.js";
+export type { ResultBudget } from "./envelope.js";

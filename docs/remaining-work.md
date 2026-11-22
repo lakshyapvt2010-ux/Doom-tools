@@ -12,9 +12,10 @@ a roadmap, not an instruction to build every integration it lists.
 - PRD 14.2 Windows filesystem/Git: not implemented or validated as supported.
   No Windows environment was used. Do not turn a workflow definition or portable
   TypeScript into a claim of Windows support.
-- Strict final-result/wire budgets: successful JSON payloads have byte/token
-  caps, but errors, envelope fields, warnings and adapter framing are outside
-  those caps. Tool/provider allocations happen before runtime shaping.
+- Strict transport-wire budgets remain open. Whole compact-JSON runtime results
+  now have separate byte/token caps covering errors, fields and audit warnings.
+  SDK/provider framing, duplicate MCP representations and SDK-owned validation
+  messages are outside them. Tool allocations precede shaping.
 - Browser networking: per-request checks cover redirects and subresources, and
   mapped-IPv6 destination handling is fixed. A DNS-rebinding window remains
   between validation and Chrome connecting. Private-network isolation is not

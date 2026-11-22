@@ -48,4 +48,5 @@ No built-in authentication; no live external API mutation was exercised.
 PRD 8.4 follow-up: toolkit/per-tool successful-payload byte and optional token
 budgets, host tokenizer hook, JSON serialization overhead and impossible-budget
 handling. Five regression tests. Default token estimates remain approximate;
-full result-envelope/adapter-wire budgeting is still a stated limitation.
+separate whole-envelope caps now cover errors and warnings. Adapter-wire budgeting
+is still a stated limitation.

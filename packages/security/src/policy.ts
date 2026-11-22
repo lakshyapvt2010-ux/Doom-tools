@@ -87,8 +87,12 @@ export interface PolicyConfig {
     maxOutputBytes?: number;
     /** Serialized payload token budget; default counter is approximate. */
     maxOutputTokens?: number;
+    /** Whole compact-JSON runtime envelope, including errors and warnings. Default 65536. */
+    maxResultBytes?: number;
+    /** Whole-envelope tokens, using the host counter (approximate by default). */
+    maxResultTokens?: number;
     /** Per-tool caps may narrow, never widen, toolkit budgets. */
-    perTool?: Record<string, { maxOutputBytes?: number; maxOutputTokens?: number }>;
+    perTool?: Record<string, { maxOutputBytes?: number; maxOutputTokens?: number; maxResultBytes?: number; maxResultTokens?: number }>;
   };
   /** Default per-invocation timeout in ms. Default 60000. */
   timeouts?: { defaultMs?: number };
@@ -113,7 +117,9 @@ export interface ResolvedPolicy {
   auditJsonlPath?: string;
   maxOutputBytes: number;
   maxOutputTokens?: number;
-  perToolOutputBudgets: Record<string, {maxOutputBytes?: number; maxOutputTokens?: number}>;
+  maxResultBytes: number;
+  maxResultTokens?: number;
+  perToolOutputBudgets: Record<string, {maxOutputBytes?: number; maxOutputTokens?: number; maxResultBytes?: number; maxResultTokens?: number}>;
   defaultTimeoutMs: number;
 }
 
@@ -137,10 +143,12 @@ export function resolvePolicy(config: PolicyConfig): ResolvedPolicy {
     auditPayloads: config.audit?.payloads ?? false,
     maxOutputBytes: config.budgets?.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES,
     maxOutputTokens: config.budgets?.maxOutputTokens,
+    maxResultBytes: config.budgets?.maxResultBytes ?? 65536,
+    maxResultTokens: config.budgets?.maxResultTokens,
     perToolOutputBudgets: config.budgets?.perTool ?? {},
     defaultTimeoutMs: config.timeouts?.defaultMs ?? DEFAULT_TIMEOUT_MS
   };
-  for (const budget of [{maxOutputBytes:resolved.maxOutputBytes, maxOutputTokens:resolved.maxOutputTokens}, ...Object.values(resolved.perToolOutputBudgets)]) {
+  for (const budget of [{maxOutputBytes:resolved.maxOutputBytes, maxOutputTokens:resolved.maxOutputTokens, maxResultBytes:resolved.maxResultBytes, maxResultTokens:resolved.maxResultTokens}, ...Object.values(resolved.perToolOutputBudgets)]) {
     for (const value of Object.values(budget)) {
       if (value !== undefined && (!Number.isSafeInteger(value) || value < 1)) throw new Error("Output budgets must be positive safe integers.");
     }

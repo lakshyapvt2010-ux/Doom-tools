@@ -47,7 +47,7 @@ The dated desk competitive review is now in docs/competitive-review.md. The requ
 ## Remaining requirements and limits
 
 - Five examples ship: coding-agent wiring, read-only repository assistant, read-only data assistant (sqlite.query), a local no-provider RAG example (custom keyword-retrieval tool + filesystem.read; lexical, no embeddings) and a headless browser agent example over a bundled loopback page. PRD section 17 lists these examples.
-- Output shaping now has toolkit/per-tool successful-payload byte and optional token budgets. JSON escaping and payload structure count against the cap. Host tokenizers are supported; the default estimator is approximate. Full envelope, errors and adapter formatting remain outside the cap; strict final-wire budgeting stays open. See docs/output-budgets.md.
+- Output shaping now has toolkit/per-tool successful-payload byte and optional token budgets. JSON escaping and payload structure count against the cap. Host tokenizers are supported; the default estimator is approximate. Separate whole-result caps now cover compact runtime envelopes, including errors and audit warnings. Adapter/protocol framing remains outside these caps. See docs/output-budgets.md.
 - MCP server transports include stdio and Streamable HTTP; outbound MCP client tests cover both. The transport changes after 4e3ac25 await the next CI run.
 - No named desktop MCP client or hosted model provider was exercised. The SDK fixture is not evidence of provider behavior or autonomous agent quality.
 - Shell is trusted-host only. Cancellation and timeout stop waiting and signal cooperative tools; arbitrary host-side work can continue. There is no container/OS isolation backend.
@@ -166,8 +166,8 @@ are verified after shaping. Tiny impossible budgets return resource_limit.
 Five new tests cover escaping/preview overhead, host token counting, impossible
 budgets, per-tool narrowing through selection, and invalid configuration. Two
 older assertions changed to reflect JSON quote overhead rather than raw text.
-Full envelope/errors/warnings/adapter wire overhead remain outside payload caps;
-strict final-wire budgeting is still open. See docs/output-budgets.md.
+Whole-envelope limits were added in the following local checkpoint; strict
+adapter/protocol-wire budgeting remains open. See docs/output-budgets.md.
 
 ## IPv4-mapped IPv6 private-address regression
 
@@ -184,3 +184,16 @@ Post-fix validation: build and strict typecheck pass; 221 tests pass with zero
 failures, cancellations or skips on Linux Node 22.23.5, 24.22.3 and 26.13.1.
 The Node 24/26 reruns used the fresh source checkout after the IPv6 commit.
 This does not certify macOS/Windows, current remote CI, or isolation guarantees.
+
+
+## Complete runtime-result caps (local follow-up)
+
+Separate `maxResultBytes` (default 65536) and optional `maxResultTokens` narrow per
+tool, preserving the earlier payload-cap semantics. They measure compact result
+JSON, including errors, trace/timing, metadata, truncation and late audit warnings.
+Oversize results are explicitly suppressed with a bounded stable-code failure.
+Impossible envelopes reject before execution/approval; custom-tokenizer failures
+never permit an oversized result. Nine focused tests cover defaults, errors,
+metadata/warnings, terminal-sink failure, impossible budgets, per-tool narrowing,
+tokens, invalid serialization and oversized correlation IDs. This does not bound
+SDK/protocol framing, upstream allocations or SDK-owned validation feedback.

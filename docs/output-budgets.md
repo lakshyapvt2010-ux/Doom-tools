@@ -11,6 +11,8 @@ const toolkit = createToolkit({
     budgets: {
       maxOutputBytes: 32768,
       maxOutputTokens: 4000,
+      maxResultBytes: 65536,
+      maxResultTokens: 8000,
       perTool: {
         "filesystem.read": { maxOutputBytes: 8192, maxOutputTokens: 1000 }
       }
@@ -45,10 +47,37 @@ quotes, escape expansion and preview structure were not counted. Binary search
 always verifies the chosen candidate; a non-monotonic host tokenizer may produce
 a smaller prefix than the longest possible one, but never an over-budget one.
 
-Boundaries: these are successful-payload caps, not final transport-wire or full
-envelope caps. Error messages/details, tool identity, timing, trace IDs,
-truncation markers, warnings, and adapter formatting are outside this cap.
-In-memory tool/provider output is materialized before shaping. These limits do
-not prevent a tool or provider from allocating excessive memory upstream, and
-do not replace tool-specific pagination or response bounds. Strict final-wire
-budgeting remains unimplemented and must not be claimed as solved.
+## Complete runtime envelopes
+
+`maxResultBytes` defaults to 65536 and measures the entire compact
+`JSON.stringify(result)`, for success and failure. `maxResultTokens` is optional
+and uses the same counter. Both also support per-tool narrowing. These are
+separate from `maxOutputBytes`/`maxOutputTokens`, which retain their payload-only
+meaning for compatibility.
+
+If the complete result cannot fit, the runtime suppresses the result body and
+optional fields, returning a small failure with an explicit truncation marker
+and retry instructions. Existing error codes are preserved; an oversized
+successful result becomes `resource_limit`, not an unmarked partial success.
+This is suppression, not a summary or a promise that omitted content can be
+retrieved without re-executing the tool. Do not retry mutating calls blindly.
+
+Required tool identity and correlation fields are never silently shortened. A
+budget that cannot fit a minimal failure envelope is rejected with a
+`ToolError(resource_limit)` before tool execution or approval. Such a rejected
+configuration produces no invocation trace/audit pair. An unusually long
+caller-supplied trace ID or tool name can make an otherwise usable cap
+impossible. Host token counters must be pure; arbitrary non-monotonic counters
+may also reject a result after execution when no safe fallback fits. No
+oversized result is emitted in that case.
+
+The runtime reserves space for a late audit-sink warning before recording the
+terminal outcome. This may suppress a result that would fit without the
+warning. Both the reserved and actual rendering are checked for token caps.
+
+Boundaries: the whole-envelope cap counts compact runtime JSON, not SDK/provider
+messages, MCP's duplicated text/structured content, JSON-RPC headers, network
+framing or SDK-generated validation failures. Strict final-wire budgeting is
+still open. In-memory tool/provider output is materialized before shaping; these
+limits do not prevent excessive upstream allocation and do not replace
+tool-specific pagination or response bounds.

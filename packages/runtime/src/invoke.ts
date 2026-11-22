@@ -7,6 +7,7 @@ import {
 import {
   RISK_ORDER, SIDE_EFFECT_ORDER, evaluatePolicy, newAuditEvent, type Approver
 } from "@agentic-tools/security";
+import { assertResultBudget, boundResult, AUDIT_FAILURE_WARNING } from "./envelope.js";
 import { shapeResult } from "./shaping.js";
 import { scopeServices } from "./services.js";
 import { canonicalizeCapabilityPath } from "./paths-util.js";
@@ -79,6 +80,13 @@ export async function invokeTool(
   const traceId = options.traceId ?? randomUUID();
   const tool = state.registry.resolve(name);
   const toolRef = { name, version: tool?.version ?? "unknown" };
+  const localBudget = state.policy.perToolOutputBudgets[name];
+  const resultTokenCap = Math.min(state.policy.maxResultTokens ?? Infinity, localBudget?.maxResultTokens ?? Infinity);
+  const resultBudget = {
+    maxResultBytes: Math.min(state.policy.maxResultBytes, localBudget?.maxResultBytes ?? Infinity),
+    ...(Number.isFinite(resultTokenCap) ? {maxResultTokens: resultTokenCap} : {})
+  };
+  assertResultBudget(failure(toolRef, {code: "resource_limit", message: ""}, {traceId}), resultBudget, state.countOutputTokens);
   let policyDecision: TraceRecord["policyDecision"] = "not_evaluated";
   let approvalOutcome: TraceRecord["approvalOutcome"];
   let auditDeliveryFailed = false;
@@ -95,7 +103,6 @@ export async function invokeTool(
     let result: ToolResult;
     try {
       if (!isToolResult(raw)) throw new Error("invalid result");
-      const localBudget = state.policy.perToolOutputBudgets[name];
       const byteBudget = Math.min(state.policy.maxOutputBytes, localBudget?.maxOutputBytes ?? Infinity);
       const tokenCap = Math.min(state.policy.maxOutputTokens ?? Infinity, localBudget?.maxOutputTokens ?? Infinity);
       result = shapeResult(state.redactor.redactValue({ ...raw, tool: toolRef, traceId, timing: { startedAt, durationMs } }), byteBudget,
@@ -103,6 +110,7 @@ export async function invokeTool(
     } catch {
       result = failure(toolRef, { code: "execution_error", message: "Tool returned an invalid or non-serializable result." }, { traceId, timing: { startedAt, durationMs } });
     }
+    result = boundResult(result, resultBudget, state.countOutputTokens);
     const outcome = {
       status: result.status, durationMs,
       ...(result.status === "error" ? { errorCode: result.error.code } : {})
@@ -118,7 +126,7 @@ export async function invokeTool(
     // Only registered names become metric labels. Guessed names collapse into
     // one bucket, so untrusted inputs cannot create unbounded cardinality.
     state.metrics.record({ ...outcome, tool: tool ? tool.name : "[unknown]", policyDecision });
-    if (auditDeliveryFailed) result.warnings = [...(result.warnings ?? []), "A configured audit sink failed. The in-memory audit stream remains available."];
+    if (auditDeliveryFailed) result.warnings = [...(result.warnings ?? []), AUDIT_FAILURE_WARNING];
     return result;
   };
   const cancelled = () => fail("cancelled", "Invocation cancelled by its caller. Host work already started by a non-cooperative tool may continue.");
