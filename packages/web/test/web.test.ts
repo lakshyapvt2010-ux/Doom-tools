@@ -132,3 +132,22 @@ test("a name that is not private-looking but resolves to loopback is refused at 
     assert.deepEqual(hits, []);
   } finally { server.close(); }
 });
+
+test("canonical IPv4-mapped IPv6 cannot bypass private-address refusal", async () => {
+  hits=[];
+  const {server,port}=await serve();
+  try {
+    const toolkit=kit(web({only:['fetch','request']}),{network:'allow-all'});
+    for(const op of ['web.fetch','web.request']) {
+      const r=await toolkit.invoke(op,{url:`http://[::ffff:127.0.0.1]:${port}/`});
+      assert.equal(r.status==='error'&&r.error.code,'permission_denied');
+    }
+    assert.deepEqual(hits,[]);
+  } finally {server.close();}
+});
+
+test("IPv6 mapped spellings and non-unicast scopes are classified conservatively", () => {
+  for(const host of ['::ffff:7f00:1','0:0:0:0:0:ffff:a00:1','::ffff:c0a8:101','::a00:1','ff02::1','fec0::1','64:ff9b::7f00:1','2002:7f00:1::']) assert.equal(isPrivateHost(host),true,host);
+  assert.equal(isPrivateHost('::ffff:808:808'),false);
+  assert.equal(isPrivateHost('2606:4700:4700::1111'),false);
+});

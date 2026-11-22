@@ -103,3 +103,10 @@ test("private destinations are refused by default", async () => {
     assert.equal(r.status === "error" && r.error.code, "permission_denied", url);
   }
 });
+
+test("mapped IPv6 loopback is refused before Chrome starts", async (t) => {
+ const tools=browser();t.after(()=>tools.close());
+ const k=kit(tools,granted);
+ const r=await k.invoke('browser.navigate',{url:'http://[::ffff:127.0.0.1]/'});
+ assert.equal(r.status==='error'&&r.error.code,'permission_denied');
+});

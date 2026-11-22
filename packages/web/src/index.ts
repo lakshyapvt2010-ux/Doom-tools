@@ -77,7 +77,16 @@ export function isPrivateHost(hostname: string): boolean {
     );
   }
   if (isIP(h) === 6) {
-    return h === "::" || h === "::1" || /^f[cd]/.test(h) || /^fe[89ab]/.test(h);
+    // URL canonicalizes dotted mapped addresses to hex. Normalize expanded
+    // spellings before checking, otherwise ::ffff:127.0.0.1 becomes a bypass.
+    const canonical = new URL(`http://[${h}]/`).hostname.slice(1, -1);
+    const embedded = canonical.match(/^(?:::ffff:|::|64:ff9b::)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/)
+      ?? canonical.match(/^2002:([0-9a-f]{1,4}):([0-9a-f]{1,4}):/);
+    if (embedded) {
+      const hi = parseInt(embedded[1]!, 16), lo = parseInt(embedded[2]!, 16);
+      return isPrivateHost(`${hi >>> 8}.${hi & 255}.${lo >>> 8}.${lo & 255}`);
+    }
+    return canonical === "::" || canonical === "::1" || /^f[cd]/.test(canonical) || /^fe[89abcdef]/.test(canonical) || canonical.startsWith("ff");
   }
   return false;
 }

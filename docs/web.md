@@ -58,3 +58,9 @@ or replayed with a body. Response headers other than content type and redirect
 target are not exposed. No proxy support, multipart uploads or binary responses.
 Five local fixture tests cover method/body/header forwarding, policy/approval
 before network, rejected input, opt-in risk bounds and non-replayed redirects.
+
+IPv6 hardening: the destination helper normalizes IPv6 spellings before testing
+IPv4-mapped literals. This closes the dotted-to-hex URL normalization bypass.
+Private embedded IPv4 in compatible, standard translation and 6to4 addresses,
+IPv6 multicast and site-local ranges are also refused. This is destination
+validation, not a host-wide network sandbox or proxy-detection system.

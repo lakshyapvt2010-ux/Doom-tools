@@ -2,6 +2,19 @@
 
 This is a P0 prototype for review, aligned to the supplied PRD v0.2 dated November 9, 2026. It is not an alpha release or evidence of demand. The original prototype is preserved in the preceding baseline commit.
 
+## Current local checkpoint
+
+The code checkpoint now has 221 tests (218 plus three mapped-IPv6 regressions).
+Before the IPv6 fix, a fresh source checkout using an empty pnpm store downloaded
+all 155 dependencies, then passed build/typecheck and 218 tests separately on
+Linux Node 22.23.5, 24.22.3 and 26.13.1 without skips. All five examples and CLI
+doctor/validate/tools-list passed from that checkout. The browser demo screenshot
+was inspected: the typed filter and resulting page text were visible. The
+additional IPv6 regressions are documented at the end; post-fix matrix results
+are reported there. None of this certifies macOS/Windows or replaces real CI.
+Earlier sections below record historical checkpoints and should not be read as
+the latest count. No npm publication, deployment, credentials or spending.
+
 ## Evidence from the November 22 improvement pass
 
 - Build and strict TypeScript checks pass on Linux.
@@ -154,3 +167,14 @@ budgets, per-tool narrowing through selection, and invalid configuration. Two
 older assertions changed to reflect JSON quote overhead rather than raw text.
 Full envelope/errors/warnings/adapter wire overhead remain outside payload caps;
 strict final-wire budgeting is still open. See docs/output-budgets.md.
+
+## IPv4-mapped IPv6 private-address regression
+
+A new regression failed against the prior code: URL parsing canonicalized
+IPv4-mapped loopback to hexadecimal, bypassing the helper's dotted-only check.
+The shared helper now normalizes IPv6 spelling and classifies embedded IPv4 in
+mapped/compatible/standard translation and 6to4 forms. IPv6 multicast and
+site-local scopes are refused too. Two web tests cover canonical literal
+fetch/request refusal without fixture hits and address spellings; one browser
+test verifies refusal before Chrome starts. The browser's separate DNS-rebinding
+window is unchanged and private-network isolation is still not guaranteed.
