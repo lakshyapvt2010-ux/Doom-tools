@@ -137,7 +137,14 @@ export async function invokeTool(
       if (!isToolResult(raw)) throw new Error("invalid result");
       const byteBudget = Math.min(state.policy.maxOutputBytes, localBudget?.maxOutputBytes ?? Infinity);
       const tokenCap = Math.min(state.policy.maxOutputTokens ?? Infinity, localBudget?.maxOutputTokens ?? Infinity);
-      result = shapeResult(state.redactor.redactValue({ ...raw, tool: toolRef, traceId, timing: { startedAt, durationMs } }), byteBudget,
+      const sanitized = state.redactor.redactValue({ ...raw, tool: toolRef, traceId, timing: { startedAt, durationMs } });
+      if (sanitized.status === "success") {
+        // JSON drops undefined/function/symbol object fields. Void handlers use
+        // explicit null so every transport still carries a valid output field.
+        if (sanitized.output === undefined) sanitized.output = null;
+        if (JSON.stringify(sanitized.output) === undefined) throw new Error("Non-JSON output");
+      }
+      result = shapeResult(sanitized, byteBudget,
         Number.isFinite(tokenCap) ? tokenCap : undefined, state.countOutputTokens);
     } catch {
       result = failure(toolRef, { code: "execution_error", message: "Tool returned an invalid or non-serializable result." }, { traceId, timing: { startedAt, durationMs } });

@@ -101,3 +101,13 @@ test("invalid or impossible transport serializers reject before execution", asyn
  }
  assert.equal(calls,0);
 });
+
+test("void results retain a valid output field on the wire; functions cannot masquerade as JSON output", async t => {
+ const kit=setup(t,async()=>undefined);
+ const result=await kit.invoke(ref.name,{});
+ assert.equal(result.status,"success");
+ assert.deepEqual((JSON.parse(JSON.stringify(result)) as {output:unknown}).output,null);
+ const invalid=setup(t,async()=>function notJson(){});
+ const failed=await invalid.invoke(ref.name,{});
+ assert.equal(failed.status==="error"&&failed.error.code,"execution_error");
+});

@@ -100,3 +100,7 @@ not discard the marker while returning a bare shortened payload. Complete,
 untruncated successes keep their earlier output-only shape. MCP text rendering
 uses compact JSON, and the CallToolResult serializer now accounts for its
 separate structured copy as well.
+
+Void handlers serialize as `output: null`, preserving the required successful
+output field. A function/symbol cannot be emitted as a root output; the runtime
+returns a safe `execution_error` rather than a success with a missing field.
