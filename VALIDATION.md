@@ -178,3 +178,8 @@ site-local scopes are refused too. Two web tests cover canonical literal
 fetch/request refusal without fixture hits and address spellings; one browser
 test verifies refusal before Chrome starts. The browser's separate DNS-rebinding
 window is unchanged and private-network isolation is still not guaranteed.
+
+Post-fix validation: build and strict typecheck pass; 221 tests pass with zero
+failures, cancellations or skips on Linux Node 22.23.5, 24.22.3 and 26.13.1.
+The Node 24/26 reruns used the fresh source checkout after the IPv6 commit.
+This does not certify macOS/Windows, current remote CI, or isolation guarantees.
