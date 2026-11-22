@@ -237,3 +237,13 @@ executing once, expiry, changed input/policy and unknown/mismatched tickets.
 The bridge only supports process-local tickets and pinned SDK behavior. No
 hosted model, remote approval service or durable approval persistence was tested.
 See docs/openai-approvals.md.
+
+
+## MCP CallToolResult framing caps (local follow-up)
+
+The runtime can measure a pure final-result serializer before execution and at
+finish. MCP uses it to count both text and structured copies, JSON escaping,
+content-array keys and isError, before terminal trace/audit. Two runtime and two
+real linked MCP Client/Server tests cover wrapper expansion, errors, tokens and
+invalid/impossible serializers. Full JSON-RPC/HTTP headers and SDK-generated
+messages remain outside the cap; no arbitrary transport-wire cap is claimed.

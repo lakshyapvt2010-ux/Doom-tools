@@ -7,7 +7,7 @@ import {
 import {
   RISK_ORDER, SIDE_EFFECT_ORDER, approvalInputHash, evaluatePolicy, newAuditEvent, type ApprovalRequest, type Approver
 } from "@agentic-tools/security";
-import { assertResultBudget, boundResult, AUDIT_FAILURE_WARNING } from "./envelope.js";
+import { assertResultBudget, boundResult, AUDIT_FAILURE_WARNING, type ResultEncoder } from "./envelope.js";
 import { snapshotInput } from "./input-snapshot.js";
 import { shapeResult } from "./shaping.js";
 import { scopeServices } from "./services.js";
@@ -24,6 +24,8 @@ export interface InvokeOptions {
   extraApprovers?: Approver[];
   /** Return a single-use process-local approval ticket without calling approvers. */
   deferApproval?: boolean;
+  /** Pure trusted-host serializer. Caps include its final representation. */
+  encodeResult?: ResultEncoder;
   /** Protocol transports that own stdio must not prompt on those streams. */
   excludeStdioApprovers?: boolean;
 }
@@ -116,7 +118,7 @@ export async function invokeTool(
     maxResultBytes: Math.min(state.policy.maxResultBytes, localBudget?.maxResultBytes ?? Infinity),
     ...(Number.isFinite(resultTokenCap) ? {maxResultTokens: resultTokenCap} : {})
   };
-  assertResultBudget(failure(toolRef, {code: "resource_limit", message: ""}, {traceId}), resultBudget, state.countOutputTokens);
+  assertResultBudget(failure(toolRef, {code: "resource_limit", message: ""}, {traceId}), resultBudget, state.countOutputTokens, options.encodeResult);
   let policyDecision: TraceRecord["policyDecision"] = "not_evaluated";
   let approvalOutcome: TraceRecord["approvalOutcome"];
   let auditDeliveryFailed = false;
@@ -140,7 +142,7 @@ export async function invokeTool(
     } catch {
       result = failure(toolRef, { code: "execution_error", message: "Tool returned an invalid or non-serializable result." }, { traceId, timing: { startedAt, durationMs } });
     }
-    result = boundResult(result, resultBudget, state.countOutputTokens);
+    result = boundResult(result, resultBudget, state.countOutputTokens, options.encodeResult);
     const outcome = {
       status: result.status, durationMs,
       ...(result.status === "error" ? { errorCode: result.error.code } : {})

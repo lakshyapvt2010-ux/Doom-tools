@@ -140,6 +140,9 @@ export function createMcpServer(toolkit: Toolkit, options: ServeMcpOptions = {})
 
   server.setRequestHandler(CallToolRequestSchema, async (request, context) => {
     const { name, arguments: args } = request.params;
+    // Count the actual CallToolResult, including both copies and JSON escaping,
+    // in the runtime before terminal audit/metrics, not after the invocation.
+    const encodeResult = (result: ToolResult) => JSON.stringify(toMcpCallResult(result));
     // Server-level selection enforcement (PRD 8.6, FR-012/FR-019): a tool
     // not exposed to THIS client is rejected with permission_denied even
     // when the toolkit knows the name. Hiding the schema is never the
@@ -149,13 +152,13 @@ export function createMcpServer(toolkit: Toolkit, options: ServeMcpOptions = {})
       // Route even hidden/unknown calls through the runtime so denied calls
       // receive the same trace, audit, metrics, redaction and timing coverage.
       return toMcpCallResult(await toolkit.select({ name: [] }).invoke(name, args ?? {}, {
-        signal: context.signal
+        signal: context.signal, encodeResult
       }));
     }
     // The elicitation approver goes first so the client user is asked
     // directly; toolkit approvers (CLI, queue, callback) are the fallback.
     const result = await toolkit.invoke(name, args ?? {}, {
-      signal: context.signal,
+      signal: context.signal, encodeResult,
       excludeStdioApprovers: true,
       extraApprovers: [mcpElicitationApprover(server)]
     });

@@ -84,3 +84,20 @@ test("standalone whole-envelope shaping rejects invalid limits and hides tokeniz
  for(const maxResultBytes of [NaN,Infinity,0,-1,1.5]) assert.throws(()=>boundResult(success(ref,"x"),{maxResultBytes}),/positive safe integers/);
  assert.throws(()=>boundResult(success(ref,"x"),{maxResultBytes:1000,maxResultTokens:1000},()=>{throw Error("private host text");}),e=>e instanceof ToolError && e.message==="Complete-result token counter failed.");
 });
+
+test("host transport serializer counts wrapping and escape expansion before audit", async t => {
+ const encode=(result:ToolResult)=>JSON.stringify({content:JSON.stringify(result),structured:result});
+ const kit=setup(t,async()=> '"\\'.repeat(500),{policy:{budgets:{maxOutputBytes:10000,maxResultBytes:2400}}});
+ const result=await kit.invoke(ref.name,{}, {encodeResult:encode});
+ assert.ok(Buffer.byteLength(encode(result))<=2400);
+ assert.equal(result.status==="error"&&result.error.code,"resource_limit");
+ assert.equal(kit.traceRecords()[0]?.errorCode,"resource_limit");
+});
+test("invalid or impossible transport serializers reject before execution", async t => {
+ let calls=0;
+ const kit=setup(t,async()=>{calls++;return "ok";});
+ for(const encodeResult of [()=>{throw Error("private host text");},()=>"x".repeat(100000)]) {
+  await assert.rejects(()=>kit.invoke(ref.name,{}, {encodeResult}),e=>e instanceof ToolError&&e.code==="resource_limit"&&!e.message.includes("private host text"));
+ }
+ assert.equal(calls,0);
+});

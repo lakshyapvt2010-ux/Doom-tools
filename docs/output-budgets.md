@@ -75,10 +75,22 @@ The runtime reserves space for a late audit-sink warning before recording the
 terminal outcome. This may suppress a result that would fit without the
 warning. Both the reserved and actual rendering are checked for token caps.
 
-Boundaries: the whole-envelope cap counts compact runtime JSON, not SDK/provider
-messages, MCP's duplicated text/structured content, JSON-RPC headers, network
-framing or SDK/adapter-owned failures outside a runtime invocation. Strict final-wire budgeting is
-still open. In-memory tool/provider output is materialized before shaping; these
+By default the whole-envelope cap counts compact runtime JSON. A trusted host
+can pass a pure `encodeResult(result): string` invocation option to measure its
+actual result representation instead. The same serializer is checked before
+execution and again for the final result, before terminal audit/metrics. A
+serializer error is reported generically, without forwarding its exception.
+
+MCP uses this hook automatically. Its CallToolResult cap includes the duplicated
+text/structured content, escaping, wrapper arrays/keys and isError flag. Both
+representations describe the same bounded runtime outcome. This applies to
+stdio and Streamable HTTP, which share the handler.
+
+Boundaries: SDK/provider messages, JSON-RPC IDs/envelopes, HTTP/network framing
+and SDK/adapter-owned failures outside a runtime invocation remain outside the
+cap. An impossible MCP result cap rejects before tool execution and may produce
+a protocol-level error instead of a tool result. Arbitrary final-wire budgeting
+is still open. In-memory tool/provider output is materialized before shaping; these
 limits do not prevent excessive upstream allocation and do not replace
 tool-specific pagination or response bounds.
 
@@ -86,4 +98,5 @@ Framework default rendering now switches to the full envelope when the runtime
 truncates a successful payload. LangChain, OpenAI Agents and Vercel adapters must
 not discard the marker while returning a bare shortened payload. Complete,
 untruncated successes keep their earlier output-only shape. MCP text rendering
-uses compact JSON; its separate structured copy still adds protocol overhead.
+uses compact JSON, and the CallToolResult serializer now accounts for its
+separate structured copy as well.
