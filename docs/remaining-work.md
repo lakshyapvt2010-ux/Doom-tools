@@ -27,13 +27,15 @@ a roadmap, not an instruction to build every integration it lists.
 
 ## Validation and release gates
 
-- New local commits after 4e3ac25 are not remotely CI-verified. Linux Node
-  22/24/26 passing locally does not establish macOS success. PostgreSQL tests
-  skip when server binaries are absent; a green job may therefore omit them.
+- CI run 10 at a718ef6 failed macOS Node 24/26 during Chrome cleanup. A local
+  fix at 1568650 passes the 271-test Linux Node 22/24/26 matrix but is not macOS
+  verified. PostgreSQL server tests skipped in all six CI jobs. All macOS jobs
+  also skipped the non-resolving loopback-name check. The failed jobs did not
+  finish the adversarial package. See VALIDATION.md for exact coverage.
 - Named desktop MCP clients and hosted model behavior remain untested. Local
   SDK mock/scripted models validate execution mechanics, not autonomous quality.
 - A fresh source checkout passes frozen-lockfile installation from a cached
-  store, build/typecheck, all264 Linux Node22 tests, five examples and CLI smoke.
+  store, build/typecheck, all271 Linux Node22 tests, five examples and CLI smoke.
   The earlier empty-cache install had218 tests; it is separate evidence. No
   external developer has demonstrated the section-18 first-use gate.
 - The competitive desk review is complete, but the 5-10 developer conversations,
@@ -49,6 +51,6 @@ a roadmap, not an instruction to build every integration it lists.
   or tokenizer was chosen; the fallback estimate is approximate.
 - License, publishing, deployment, interviews and any paid provider evaluation
   require separate owner decisions. Nothing here selects them automatically.
-- The owner delegated remote organization: this pass keeps direct-to-main with
-  focused, explained commits, rather than a PR stack. Existing pushed history
-  is preserved; later releases can choose a different review structure.
+- Changes remain focused commits and existing pushed history is preserved.
+  Documentation is not permission for a remote write or a fresh credential.
+  Later releases can choose a different review structure.

@@ -4,33 +4,62 @@ This is a P0 prototype with partial P1/P2 extensions for review, aligned to the 
 
 ## Current local checkpoint
 
-The current code checkpoint has **264 passing tests on each of Linux Node
-22.23.5, 24.22.3 and 26.13.1**, with zero failures, cancellations or skips. Build
-and strict typecheck pass. The PostgreSQL cases use a real throwaway local cluster.
-These newer envelope, snapshot, deferred-resume and native-framework bridge
-commits are local after a718ef6 and have no remote CI result yet. Named desktop
-clients, hosted model quality, macOS/Windows and independent security review are
-not certified by these local tests.
+The current code checkpoint, 1568650, has **271 passing tests on each of Linux
+Node 22.23.5, 24.22.3 and 26.13.1**, with zero failures, cancellations or skips.
+Build and strict typecheck pass. PostgreSQL cases use a real throwaway local
+cluster. Changes after a718ef6 are local and have no remote CI result. No macOS
+or Windows success is inferred from these Linux tests.
 
-The earlier a718ef6 checkpoint was pushed after its 221-test Linux matrix; its
-remote CI run 10 must be checked separately. The one temporary repository-only
-push token was revoked and an authenticated request subsequently returned401.
-No new token was created for the later local commits. No publication, deployment,
-spending or outreach occurred.
+A fresh source checkout at 1568650 passed offline frozen-lockfile installation
+from the existing cached dependency store, build, strict typecheck and all 271
+Linux Node 22 tests, without skips. All five examples and CLI doctor, config
+validation and token listing passed there. This is local clean-checkout evidence,
+not an external developer first-use result. The earlier empty-cache install
+covered 218 tests and is a separate historical check.
 
-A new source-only checkout of code checkpoint bbed69e passed frozen-lockfile
-installation from the existing local dependency store, build, strict typecheck
-and264 tests on Linux Node22, without skips. All five examples and CLI
-doctor/config validation/token listing passed from that fresh checkout. This
-latest install reused cached dependencies; the older empty-cache result below
-is a separate check. No external developer first-use result is claimed.
+The prior temporary push credential was revoked. No new credential, remote
+write, CI rerun, publication, deployment, spending or outreach was performed for
+this follow-up. Named desktop clients, hosted model quality and independent
+security review remain unverified.
 
-Before the mapped-IPv6 fix, a fresh source checkout with an empty pnpm store
-downloaded all155 dependencies and passed build/typecheck plus218 tests on the
-same three Linux Node versions. Five examples and CLI doctor/validate/tools-list
-passed from that checkout. That is historical clean-install evidence, not a new
-external developer first-use result. Earlier sections below are historical
-checkpoints and should not be read as the latest test count.
+## Remote CI run 10, inspected November 23, 2026
+
+Run 10 tested **a718ef6**, not the newer local code, and **failed**:
+https://github.com/MRIARC-08/tch-/actions/runs/45052406888
+
+| Job | Outcome | Coverage recorded in the log |
+| --- | --- | --- |
+| Ubuntu Node 22/24/26 | All passed | Each: 219 passed, 2 skipped out of 221. |
+| macOS Node 22 | Passed | 218 passed, 3 skipped out of 221. |
+| macOS Node 24 | Failed | Completed package summaries: 189 passed, 2 failed, 3 skipped out of 194. Adversarial package has 14 passing results but no final summary. |
+| macOS Node 26 | Failed | Completed package summaries: 190 passed, 1 failed, 3 skipped out of 194. Adversarial package has 14 passing results but no final summary. |
+
+Both PostgreSQL server-backed tests skipped in every job. All macOS jobs also
+skipped the connect-time loopback-name test because ip6-localhost did not resolve.
+No browser test skipped. The two failed jobs stopped before a complete summary
+for the 27-test adversarial package; its last 13 results are unverified, not
+counted as passing or as test-runner skips.
+
+Failures were ENOTEMPTY errors removing Chrome profiles during cleanup, rather
+than failed network-interception assertions. macOS 24 failed both interception
+tests during cleanup; macOS 26 failed the redirect/subresource test there.
+
+- macOS 24: https://github.com/MRIARC-08/tch-/actions/runs/45052406888/job/137300228446
+- macOS 26: https://github.com/MRIARC-08/tch-/actions/runs/45052406888/job/137300228357
+
+## Local Chrome cleanup follow-up
+
+Commit 1568650 waits for Chrome exit before profile deletion, attempts SIGTERM
+then bounded SIGKILL fallback, shares concurrent close calls, and uses bounded
+filesystem retries for transient profile-removal errors. Permanent removal
+errors remain errors. Early launch exit, timeout, socket failure and missing
+executable paths also use the shared cleanup. Exit hooks are removed after the
+child stops. Seven new regressions bring the browser package to 14 tests.
+
+The earlier 264-test local checkpoint retained the failing shutdown code. The
+271-test Linux matrix and fresh-checkout result validate the new local fix, but
+do not demonstrate that it fixes macOS. An authorized remote update and a new
+macOS CI run are still needed. No workflow was edited and run 10 was not rerun.
 
 ## Evidence from the November 22 improvement pass
 
@@ -64,7 +93,7 @@ The dated desk competitive review is now in docs/competitive-review.md. The requ
 
 - Five examples ship: coding-agent wiring, read-only repository assistant, read-only data assistant (sqlite.query), a local no-provider RAG example (custom keyword-retrieval tool + filesystem.read; lexical, no embeddings) and a headless browser agent example over a bundled loopback page. PRD section 17 lists these examples.
 - Output shaping now has toolkit/per-tool successful-payload byte and optional token budgets. JSON escaping and payload structure count against the cap. Host tokenizers are supported; the default estimator is approximate. Separate whole-result caps now cover compact runtime envelopes, including errors and audit warnings. MCP CallToolResult framing is included; JSON-RPC/HTTP and SDK/provider-owned framing remain outside these caps. See docs/output-budgets.md.
-- MCP server transports include stdio and Streamable HTTP; outbound MCP client tests cover both. The transport changes after 4e3ac25 await the next CI run.
+- MCP server transports include stdio and Streamable HTTP; outbound MCP client tests cover both. Those tests ran in CI run 10. Later local envelope/native-approval changes remain outside that run.
 - No named desktop MCP client or hosted model provider was exercised. The SDK fixture is not evidence of provider behavior or autonomous agent quality.
 - Shell is trusted-host only. Cancellation and timeout stop waiting and signal cooperative tools; arbitrary host-side work can continue. There is no container/OS isolation backend.
 - Git is still a host binary. Repository configuration, filter drivers, global configuration and native Git behavior are not a sandbox. Use trusted repositories only. Disabling hooks/signing is intentional and may differ from an interactive Git workflow.
@@ -72,7 +101,7 @@ The dated desk competitive review is now in docs/competitive-review.md. The requ
 - Best-effort secret redaction cannot stop transformed, encoded or split secrets. Avoid placing secrets in tool-accessible resources.
 - Optional audit sinks are best-effort: a failure adds a result warning and does not erase the in-memory stream. Durable/fail-closed external audit delivery is not implemented.
 - Trace retention is capped at 1,000 records, metrics at 1,024 series and the in-memory audit stream at 10,000 events (oldest dropped, count exposed on the sink). Hosts needing a full record add a durable sink.
-- macOS is in CI configuration, but was not locally tested in this Linux verification pass. Check the actual workflow result before calling the cross-platform matrix green.
+- CI run 10 failed on macOS Node 24/26 during Chrome cleanup. The local fix still needs macOS validation; see the run-10 coverage table above.
 - Package names, licensing, publication, provenance and the release/support policy remain open product decisions. Packages remain `UNLICENSED` and were not published or deployed.
 
 ## Earlier verification count (historical checkpoint)
