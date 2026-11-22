@@ -40,7 +40,7 @@ requirements for this pass.
 
 ## Verified checkpoints
 
-- Latest local matrix: 286 tests pass on each Linux Node22.23.5/24.22.3/26.13.1,
+- Latest local matrix: 287 tests pass on each Linux Node22.23.5/24.22.3/26.13.1,
   zero skips. Real PostgreSQL; Docker checks are executable doubles only.
 - Build and strict typecheck pass. Native filesystem/Git smoke passes on the
   same three Linux versions. Independent packed strict consumer passes.

@@ -4,7 +4,7 @@ This is a P0 prototype with partial P1/P2 extensions for review, aligned to the 
 
 ## Current local checkpoint, November 23
 
-Checkpoint e016906 has **286 passing
+Checkpoint bd13a0c has **287 passing
 tests on Linux Node 22.23.5, 24.22.3 and 26.13.1**, zero failures, cancellations
 or skips. Build and strict typecheck pass. PostgreSQL tests use a real local
 throwaway cluster. Docker's six executable-double tests do not execute real
