@@ -77,7 +77,7 @@ export function detectCapabilities(): CapabilityReport {
     {
       mode: "sandboxed-local",
       available: false,
-      guarantee: "Container backend is P1 roadmap; not available in this build (PRD 14.2)."
+      guarantee: "Optional @agentic-tools/docker implementation exists for Linux; real container validation is pending. Binary presence is not proof of isolation. Configure and verify it explicitly (PRD 14.2)."
     },
     {
       mode: "remote-sandbox",

@@ -26,7 +26,7 @@ test("Docker declares worst-case approval and workspace effects", () => {
  assert.equal(tool?.sideEffect,"destructive"); assert.equal(tool?.risk,"high");
  assert.deepEqual(tool?.classify?.({command:"echo hi"}).capabilities,[{name:"process.execute"},{name:"filesystem.write",path:"."}]);
 });
-test("Docker mandatory isolation arguments are used with bounded output and verified removal", async t => {
+test("Docker mandatory isolation arguments are used with bounded output and verified removal", { skip: process.platform !== "linux" ? "Linux Docker implementation only" : false }, async t => {
  const f=fixture(t); const [tool]=dockerShell({mode:"sandboxed-local",image,executable:f.binary,maxOutputBytes:16});
  const result=await tool!.execute({command:"printf hi"},f.context);
  assert.equal(result.status,"success"); assert.equal(result.truncation?.truncated,true);
@@ -37,18 +37,18 @@ test("Docker mandatory isolation arguments are used with bounded output and veri
  assert.equal(calls.at(-1)?.includes("ps"),true);
  assert.equal(calls[1]?.includes("--force"),true);
 });
-test("Docker refusal never executes on the host", async t => {
+test("Docker refusal never executes on the host", { skip: process.platform !== "linux" ? "Linux Docker implementation only" : false }, async t => {
  const f=fixture(t,"fail"); const [tool]=dockerShell({mode:"sandboxed-local",image,executable:f.binary});
  const result=await tool!.execute({command:"echo hi"},f.context);
  assert.equal(result.status==="error"&&result.error.code,"execution_error");
 });
-test("Docker timeout removes the container independently of the cancelled launch", async t => {
+test("Docker timeout removes the container independently of the cancelled launch", { skip: process.platform !== "linux" ? "Linux Docker implementation only" : false }, async t => {
  const f=fixture(t,"timeout"); const [tool]=dockerShell({mode:"sandboxed-local",image,executable:f.binary,maxTimeoutMs:200});
  const result=await tool!.execute({command:"sleep 100"},f.context);
  assert.equal(result.status==="error"&&result.error.code,"timeout");
  assert.ok(readFileSync(f.log,"utf8").includes('"--force"'));
 });
-test("Docker cleanup uncertainty is never reported as successful execution", async t => {
+test("Docker cleanup uncertainty is never reported as successful execution", { skip: process.platform !== "linux" ? "Linux Docker implementation only" : false }, async t => {
  const f=fixture(t,"cleanup"); const [tool]=dockerShell({mode:"sandboxed-local",image,executable:f.binary});
  const result=await tool!.execute({command:"echo hi"},f.context);
  assert.equal(result.status==="error"&&result.error.code,"execution_error");

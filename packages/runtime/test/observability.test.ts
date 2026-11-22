@@ -114,3 +114,14 @@ test("cancelled approval is removed; late allow cannot execute or become remembe
 test("malformed schemas fail during registration before any invocation", (t) => {
   assert.throws(() => setup(t, [{ ...echo, inputSchema: { type: "not-a-type" } } as ToolDefinition]), /schema/);
 });
+
+
+test("trace snapshots cannot alter stored outcome evidence", async t => {
+  const toolkit = setup(t);
+  await toolkit.invoke("observe.echo", { text: "ok" });
+  const first = toolkit.traceRecords();
+  first[0]!.tool.name = "changed";
+  first[0]!.status = "error";
+  assert.equal(toolkit.traceRecords()[0]?.tool.name, "observe.echo");
+  assert.equal(toolkit.traceRecords()[0]?.status, "success");
+});
