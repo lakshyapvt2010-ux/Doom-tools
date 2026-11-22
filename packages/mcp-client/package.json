@@ -1,0 +1,36 @@
+{
+  "name": "@agentic-tools/mcp-client",
+  "version": "0.0.0",
+  "description": "MCP client for Agentic Tools: registers external MCP server tools as untrusted tools (PRD FR-021, P1).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm run build && node --test dist/test/*.test.js"
+  },
+  "dependencies": {
+    "@agentic-tools/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3",
+    "@agentic-tools/runtime": "workspace:*",
+    "@agentic-tools/security": "workspace:*"
+  }
+}

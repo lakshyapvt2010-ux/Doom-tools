@@ -54,3 +54,11 @@ A separate source-only verification directory passed frozen-lockfile installatio
 ## Filesystem confinement follow-up
 
 The first CI run of the improved source passed its Linux jobs but failed on macOS because a symlink to a missing outside target was treated as an ordinary missing file. The follow-up resolves dangling symlink targets before policy checks in filesystem, runtime and Git paths, with a bounded recursion limit. Workspace and policy roots are also canonicalized so macOS-style symlink aliases use the same boundary. Two regression tests cover outside-target read/write denial and workspace-root aliases. Build, strict typecheck and all 127 tests passed locally on Linux Node 22.23.5, 24.22.3 and 26.13.1. This local result does not certify macOS; the follow-up workflow must be checked separately.
+
+## Mock, record and replay (FR-014)
+
+A new `@agentic-tools/testing` package adds `mockTool`, `recordTools` and `replayTools` with a versioned, validated recording format and best-effort redaction at record time. Eight tests cover mock errors, record/replay round trip without running the real tool, key-order-insensitive matching, unmatched calls failing closed, single consumption, redaction and runtime selection still applying to replayed tools. Verified locally on Linux Node 22 only so far; the full matrix and macOS CI have not yet been run for this change. See docs/testing.md for limits.
+
+## MCP client (FR-021)
+
+A new `@agentic-tools/mcp-client` package registers tools from an external MCP server as untrusted tools. Seven tests use a real MCP SDK server/client pair: external/high classification that ignores readOnlyHint, fail-closed denial without an explicit `mcp.call` grant, approval required by default, validation before the server is reached, labeled untrusted results, isError mapping, host narrowing that cannot exceed external, selection caps and cancellation. Linux Node 22 only so far; the connection is in-memory, with no stdio or HTTP transport and no `list_changed` handling. See docs/mcp-client.md.

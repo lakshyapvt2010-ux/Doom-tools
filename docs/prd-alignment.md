@@ -16,6 +16,8 @@ Source: the product owner's supplied PRD v0.2, prepared November 9, 2026. The ap
 | Sections 9.5 and 10.3 | Real connected MCP client exercises form elicitation accept/deny | MCP SDK elicitation integration test |
 | Sections 10.1/10.2 | Pinned SDK test dependency and optional provider-name mapping, with collision rejection | `ai` 5.0.292 tests and name-mapping regression |
 | FR-018 and section 16 | Current maintained Node LTS matrix, Node-major diagnostics, read-only CI token permissions | Linux Node 22/24/26 test runs; macOS remains subject to actual CI result |
+| FR-014 | Mock, record and deterministic replay of tool interactions; replay cannot reach the real tool | `packages/testing/test/testing.test.ts` (8 tests) |
+| FR-021; section 10.3 | External MCP tools registered as untrusted, approval-gated, capability-gated tools | `packages/mcp-client/test/mcp-client.test.ts` (7 tests) |
 | Section 17 | Runnable read-only repository assistant and observability/compatibility guides | Example smoke run, build/typecheck and integration tests |
 
 ## Deliberately not claimed
