@@ -247,3 +247,12 @@ content-array keys and isError, before terminal trace/audit. Two runtime and two
 real linked MCP Client/Server tests cover wrapper expansion, errors, tokens and
 invalid/impossible serializers. Full JSON-RPC/HTTP headers and SDK-generated
 messages remain outside the cap; no arbitrary transport-wire cap is claimed.
+
+
+## Approval retention configuration guard
+
+Constructor checks now reject non-positive, fractional and non-finite approval
+lifetimes/retention caps, and expiry values beyond Node's supported timer range.
+A zero remembered-entry limit previously could leave an eviction loop unable to
+make progress. The guard is tested without entering that loop. Deferred storage
+capacity also rejects invalid values.

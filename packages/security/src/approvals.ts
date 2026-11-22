@@ -114,6 +114,10 @@ export class ApprovalManager {
     this.allowRemembered = options.allowRememberedApprovals ?? false;
     this.rememberTtlMs = options.rememberTtlMs ?? DEFAULT_REMEMBER_TTL_MS;
     this.rememberMaxEntries = options.rememberMaxEntries ?? DEFAULT_REMEMBER_MAX_ENTRIES;
+    for (const value of [this.expiryMs, this.rememberTtlMs, this.rememberMaxEntries]) {
+      if (!Number.isSafeInteger(value) || value < 1) throw new Error("Approval lifetimes and retention limits must be positive safe integers.");
+    }
+    if (this.expiryMs > 2_147_483_647) throw new Error("Approval expiry exceeds the supported timer range.");
   }
 
   createRequest(

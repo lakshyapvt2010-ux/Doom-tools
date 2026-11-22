@@ -3,7 +3,9 @@ import { snapshotInput } from "./input-snapshot.js";
 /** Bounded, process-local, single-use tickets. No input payload is retained. */
 export class DeferredApprovals {
   private readonly entries = new Map<string, ApprovalRequest>();
-  constructor(private readonly maxEntries = 256) {}
+  constructor(private readonly maxEntries = 256) {
+    if (!Number.isSafeInteger(maxEntries) || maxEntries < 1) throw new Error("Deferred approval capacity must be a positive safe integer.");
+  }
   private prune(): void {
     for (const [id, request] of this.entries) if (Date.now() >= request.expiresAt) this.entries.delete(id);
   }

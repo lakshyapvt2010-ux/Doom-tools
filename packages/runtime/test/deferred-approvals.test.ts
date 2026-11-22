@@ -55,6 +55,7 @@ test("cancellation consumes a resume ticket without executing",async t=>{
 });
 test("deferred storage evicts old entries, prunes expiry and supports explicit discard",()=>{
  const manager=new ApprovalManager({redactor:createRedactor({secrets:[]})});
+ assert.throws(()=>new DeferredApprovals(0),/positive safe integer/);
  const store=new DeferredApprovals(2);
  const make=()=>manager.createRequest({name:"test",version:"1"},{},{sideEffect:"destructive",risk:"high",capabilities:[]},"fixture","trace");
  const a=make(),b=make(),c=make();store.add(a);store.add(b);store.add(c);
