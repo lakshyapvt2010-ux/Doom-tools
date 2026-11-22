@@ -12,9 +12,10 @@
 
 import { resolve } from "node:path";
 import { canonicalizeCapabilityPath } from "./paths-util.js";
+import { ToolError } from "@agentic-tools/core";
 import type { Logger, ToolDefinition, ToolResult } from "@agentic-tools/core";
 import {
-  ApprovalManager,
+  ApprovalManager, approvalInputHash,
   createRedactor,
   jsonlAuditSink,
   memoryAuditSink,
@@ -25,6 +26,8 @@ import {
   type Approver,
   type PolicyConfig
 } from "@agentic-tools/security";
+import { DeferredApprovals } from "./deferred-approvals.js";
+import { snapshotInput } from "./input-snapshot.js";
 import { ToolRegistry } from "./registry.js";
 import { invokeTool, type InvokeOptions } from "./invoke.js";
 import { toolFootprintTokens } from "./shaping.js";
@@ -77,6 +80,12 @@ export interface Toolkit {
   /** Resolve a pending approval out of band (PRD 9.5). */
   resolveApproval(requestId: string, decision: ApprovalDecision): boolean;
   listPendingApprovals(): ReturnType<ApprovalManager["listPending"]>;
+  /** Explicitly deferred calls are separate from currently waiting approvers. */
+  listDeferredApprovals(): ReturnType<DeferredApprovals["list"]>;
+  discardDeferredApproval(requestId: string): boolean;
+  /** Trusted host decision; exact tool/input are mandatory, tickets are single-use. */
+  resumeApproval(requestId: string, decision: ApprovalDecision,
+    call: {name: string; input: unknown; signal?: AbortSignal; timeoutMs?: number}): Promise<ToolResult>;
   /** Invalidate every remembered ("approve always") decision. */
   revokeRememberedApprovals(): void;
   auditEvents(): AuditEvent[];
@@ -119,6 +128,7 @@ export function createToolkit(options: ToolkitOptions): Toolkit {
     registry,
     selected: new Set(options.tools.map((t) => t.name)),
     policy,
+    deferredApprovals: new DeferredApprovals(),
     approvals: new ApprovalManager({
       redactor: createRedactor({ secrets: policy.secrets }),
       allowRememberedApprovals: policy.allowRememberedApprovals,
@@ -167,6 +177,34 @@ function toolkitFromState(state: ToolkitState): Toolkit {
     },
     listPendingApprovals() {
       return state.approvals.listPending();
+    },
+    listDeferredApprovals() { return state.deferredApprovals.list(); },
+    discardDeferredApproval(requestId) { return state.deferredApprovals.discard(requestId); },
+    async resumeApproval(requestId, decision, call) {
+      const request = state.deferredApprovals.take(requestId);
+      if (!request) throw new ToolError("approval_required", "Unknown, expired or already consumed approval request.");
+      if (!decision || (decision.outcome !== "allow" && decision.outcome !== "deny")) throw new ToolError("validation", "Invalid approval decision.");
+      let input: unknown;
+      try { input = snapshotInput(call.input); }
+      catch { throw new ToolError("validation", "Resume input must be plain JSON-compatible data."); }
+      if (call.name !== request.tool.name || approvalInputHash(request.tool, input, request.invocation) !== request.inputHash) {
+        throw new ToolError("permission_denied", "Resume input or tool differs from the approved request.");
+      }
+      if (decision.outcome === "deny") {
+        // Selection denial produces the normal audited terminal envelope even
+        // if a host has since relaxed its policy to allow this operation.
+        return invokeTool({...state, selected: new Set()}, call.name, input, {traceId: request.traceId, signal: call.signal});
+      }
+      return invokeTool(state, call.name, input, {
+        traceId: request.traceId, signal: call.signal, timeoutMs: call.timeoutMs,
+        extraApprovers: [{name: "deferred-approval", async approve(current) {
+          if (Date.now() >= request.expiresAt || current.tool.version !== request.tool.version ||
+              current.inputHash !== request.inputHash || current.rule !== request.rule) {
+            return {outcome: "deny", decidedBy: "deferred-approval", reason: "Approval expired or classified invocation/policy changed."};
+          }
+          return {...decision, scope: "once", decidedBy: `deferred-approval:${request.id}`};
+        }}]
+      }, request);
     },
     revokeRememberedApprovals() {
       state.approvals.clearRemembered();

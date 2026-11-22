@@ -205,3 +205,13 @@ rejection of cycles/accessors/non-JSON objects before execution or approval.
 The runtime previously retained the caller's mutable input object across an
 asynchronous approval. It now copies/fixes the JSON input before classification.
 This is verified locally, not an independent security review.
+
+## Real deferred approval resume (local follow-up)
+
+Previously, non-interactive approval_required responses named an ID that could
+not be resumed once the callback had returned. A bounded, expiring in-process
+store now supports explicit host resume, with current-policy and exact
+classified-input checks. Eight runtime tests cover allow/single-use, changed
+input/name/selection, denial/policy changes, cancellation, eviction/expiry,
+non-interactive fallback, real expired resume and changed classification.
+No external state, credentials or human decisions were used in these fixtures.

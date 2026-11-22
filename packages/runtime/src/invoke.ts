@@ -5,7 +5,7 @@ import {
   type ToolDefinition, type ToolResult
 } from "@agentic-tools/core";
 import {
-  RISK_ORDER, SIDE_EFFECT_ORDER, evaluatePolicy, newAuditEvent, type Approver
+  RISK_ORDER, SIDE_EFFECT_ORDER, approvalInputHash, evaluatePolicy, newAuditEvent, type ApprovalRequest, type Approver
 } from "@agentic-tools/security";
 import { assertResultBudget, boundResult, AUDIT_FAILURE_WARNING } from "./envelope.js";
 import { snapshotInput } from "./input-snapshot.js";
@@ -22,6 +22,8 @@ export interface InvokeOptions {
   /** Caller cancellation also cancels a pending approval. */
   signal?: AbortSignal;
   extraApprovers?: Approver[];
+  /** Return a single-use process-local approval ticket without calling approvers. */
+  deferApproval?: boolean;
   /** Protocol transports that own stdio must not prompt on those streams. */
   excludeStdioApprovers?: boolean;
 }
@@ -75,7 +77,7 @@ const noopLogger: Logger = { debug() {}, info() {}, warn() {}, error() {} };
 
 /** One terminal path handles sanitization, timing, traces, metrics and audit. */
 export async function invokeTool(
-  state: ToolkitState, name: string, input: unknown, options: InvokeOptions = {}
+  state: ToolkitState, name: string, input: unknown, options: InvokeOptions = {}, resumeBinding?: ApprovalRequest
 ): Promise<ToolResult> {
   const startedAt = Date.now();
   const traceId = options.traceId ?? randomUUID();
@@ -158,7 +160,12 @@ export async function invokeTool(
   for (const cap of invocation.capabilities) {
     if (typeof cap.path === "string") cap.path = canonicalizeCapabilityPath(state.policy.workspace, cap.path);
   }
-  const decision = evaluatePolicy(state.policy, tool, invocation);
+  let decision = evaluatePolicy(state.policy, tool, invocation);
+  if (resumeBinding && (Date.now() >= resumeBinding.expiresAt ||
+      approvalInputHash(toolRef, input, invocation) !== resumeBinding.inputHash ||
+      decision.kind !== "approval" || decision.rule !== resumeBinding.rule)) {
+    decision = {kind: "deny", reason: "Deferred approval expired or its classified invocation/policy changed."};
+  }
   policyDecision = decision.kind;
   audit("policy.decision", {
     tool: toolRef, decision: decision.kind === "deny" ? `deny: ${decision.reason}` : decision.kind,
@@ -173,6 +180,12 @@ export async function invokeTool(
       metadata: { requestId: request.id, expiresAt: request.expiresAt }
     });
     let approval = state.approvals.rememberedDecision(request, decision.setting);
+    if (!approval && options.deferApproval) {
+      state.deferredApprovals.add(request);
+      return finish(fail("approval_required", "Call paused for approval. Resume this exact input with its request ID before expiry.", {
+        approvalRequestId: request.id, expiresAt: request.expiresAt
+      }));
+    }
     if (!approval) {
       const approvers = [...(options.extraApprovers ?? []), ...state.approvers]
         .filter((approver) => !options.excludeStdioApprovers || approver.usesStdio !== true);
@@ -184,6 +197,7 @@ export async function invokeTool(
       metadata: { requestId: request.id }
     });
     if (options.signal?.aborted) return finish(cancelled());
+    if (!approval) state.deferredApprovals.add(request);
     if (!approval) return finish(fail("approval_required", "This call needs approval, but no valid decision is available. It was not auto-approved.", {
       approvalRequestId: request.id, expiresAt: request.expiresAt
     }));

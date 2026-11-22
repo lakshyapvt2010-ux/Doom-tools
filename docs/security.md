@@ -93,3 +93,25 @@ Tools receive that frozen copy. Cycles, accessors, non-finite numbers, functions
 BigInt and non-plain objects are rejected with `validation`, before any approval
 or execution. This tightens the same-process API to the JSON tool contract;
 convert dates/classes to ordinary JSON data in host code first.
+
+## Deferred approval tickets
+
+`invoke(name, input, {deferApproval: true})` returns `approval_required` before
+calling approvers. An unavailable non-interactive approver also leaves a ticket.
+The host can inspect `listDeferredApprovals()` and call
+`resumeApproval(requestId, {outcome: "allow" | "deny"}, {name, input})`. This is a
+trusted host API, never a tool to expose to the model.
+
+Tickets expire after the runtime request's five-minute lifetime, are single-use,
+and retain a hash plus redacted preview, not the original input payload. The
+process-local store holds at most 256 tickets, evicting the oldest. Restarting
+the process loses them. `discardDeferredApproval(id)` cancels a ticket without
+execution. There is no persistence or cross-process decision queue implied.
+
+Resume requires the same canonical tool and JSON input, rechecks classification,
+version, selection and current policy, and forces `once` scope. A denied request
+cannot run even if policy was relaxed in the meantime. Changed input, policy,
+classification, expiry, a consumed ID or caller cancellation never executes.
+Changing a failed resume's parameters consumes the ticket and requires a fresh
+approval. Toolkit instances and their ticket stores must be scoped to the
+appropriate trusted host user/session; they do not authenticate host callers.

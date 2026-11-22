@@ -14,6 +14,7 @@ import type {
 } from "@agentic-tools/security";
 import type { ToolRegistry } from "./registry.js";
 import type { TraceCollector } from "./trace.js";
+import type { DeferredApprovals } from "./deferred-approvals.js";
 import type { MetricsCollector } from "./metrics.js";
 
 export interface ToolkitState {
@@ -23,6 +24,7 @@ export interface ToolkitState {
   selected: ReadonlySet<string>;
   policy: ResolvedPolicy;
   approvals: ApprovalManager;
+  deferredApprovals: DeferredApprovals;
   approvers: Approver[];
   auditSinks: AuditSink[];
   redactor: Redactor;
