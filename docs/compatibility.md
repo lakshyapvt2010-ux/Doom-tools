@@ -10,7 +10,7 @@ each macOS job had 268 pass/3 skip. PostgreSQL server tests skipped everywhere,
 and a loopback-hostname test skipped on macOS. All browser/adversarial tests
 passed. Run: https://github.com/MRIARC-08/tch-/actions/runs/45058558875 .
 
-Newer local code passes 285 tests per Linux Node22/24/26, zero skips and real
+Newer local code passes 286 tests per Linux Node22/24/26, zero skips and real
 PostgreSQL. Those local changes have no newer remote result. Native Windows
 path/Git preparations and an acceptance script are present but unverified there.
 

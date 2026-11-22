@@ -30,7 +30,7 @@ a roadmap, not an instruction to build every integration it lists.
 - CI run 11 at 8a1df4a passed all six Ubuntu/macOS Node22/24/26 jobs, including
   Chrome cleanup. Two PostgreSQL server tests skipped everywhere, and one
   loopback-hostname check skipped on macOS. Newer local fixes are not covered.
-  Latest local Linux matrix: 285 pass per Node22/24/26, zero skips, real PostgreSQL.
+  Latest local Linux matrix: 286 pass per Node22/24/26, zero skips, real PostgreSQL.
 - Named desktop MCP clients and hosted model behavior remain untested. Local
   SDK mock/scripted models validate execution mechanics, not autonomous quality.
 - A fresh source checkout passes frozen-lockfile installation from a cached

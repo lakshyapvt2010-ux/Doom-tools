@@ -4,7 +4,7 @@ This is a P0 prototype with partial P1/P2 extensions for review, aligned to the 
 
 ## Current local checkpoint, November 23
 
-Checkpoint cde6643 plus the final abnormal-Docker-exit guard has **285 passing
+Checkpoint e016906 has **286 passing
 tests on Linux Node 22.23.5, 24.22.3 and 26.13.1**, zero failures, cancellations
 or skips. Build and strict typecheck pass. PostgreSQL tests use a real local
 throwaway cluster. Docker's six executable-double tests do not execute real
@@ -326,3 +326,5 @@ lifetimes/retention caps, and expiry values beyond Node's supported timer range.
 A zero remembered-entry limit previously could leave an eviction loop unable to
 make progress. The guard is tested without entering that loop. Deferred storage
 capacity also rejects invalid values.
+
+See [the requirement-by-requirement acceptance audit](docs/acceptance-audit.md).

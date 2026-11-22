@@ -80,7 +80,7 @@ packed-package starter compiles and invokes outside workspace links.
 P1 implementation now includes a separate opt-in Docker shell factory and
 Windows path/Git preparation. Docker executable-double tests do not establish
 container isolation, and no native Windows result exists. See VALIDATION.md,
-docker.md and remaining-work.md. Local matrix: 285/285 on Linux Node22/24/26;
+docker.md and remaining-work.md. Local matrix: 286/286 on Linux Node22/24/26;
 remote run11 covers only 8a1df4a, passing all six Ubuntu/macOS jobs with the
 explicit PostgreSQL/hostname skips. Earlier local-only/next-CI statements above
 are historical to their sections, not the current state.
