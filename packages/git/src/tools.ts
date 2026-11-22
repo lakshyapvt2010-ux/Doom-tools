@@ -14,6 +14,7 @@ export const GIT_OPERATIONS = [
   "status",
   "diff",
   "log",
+  "branches",
   "branch",
   "switch",
   "add",
@@ -23,7 +24,7 @@ export const GIT_OPERATIONS = [
 export type GitOperation = (typeof GIT_OPERATIONS)[number];
 
 /** Minimal, read-only default set (PRD 8.6). */
-export const GIT_DEFAULT_OPERATIONS: GitOperation[] = ["status", "diff", "log", "branch"];
+export const GIT_DEFAULT_OPERATIONS: GitOperation[] = ["status", "diff", "log", "branches"];
 
 const repoPath = { type: "string", description: "Repository directory, default the workspace root." } as const;
 
@@ -142,6 +143,30 @@ function createLog(): ToolDefinition {
           return { sha, subject, author, date };
         });
       return { commits };
+    }
+  }) as ToolDefinition;
+}
+
+function createBranches(): ToolDefinition {
+  return defineTool({
+    name: "git.branches",
+    description: "List local branches and the current branch. Read-only; use git.branch (opt-in) to create one.",
+    inputSchema: {
+      type: "object",
+      properties: { path: repoPath },
+      additionalProperties: false
+    },
+    sideEffect: "read",
+    capabilities: ["git.read"],
+    risk: "low",
+    tags: ["git", "read"],
+    classify: readClassify("git.read"),
+    execute: async (input: { path?: string }, ctx) => {
+      const repo = resolveRepo(ctx, input.path);
+      const { stdout } = await runGit(ctx, repo, ["branch", "--format=%(refname:short)"]);
+      const current = (await runGit(ctx, repo, ["branch", "--show-current"])).stdout.trim();
+      const branches = stdout.split("\n").map((b) => b.trim()).filter((b) => b.length > 0);
+      return { branches, current };
     }
   }) as ToolDefinition;
 }
@@ -317,6 +342,7 @@ const FACTORIES: Record<GitOperation, () => ToolDefinition> = {
   status: createStatus,
   diff: createDiff,
   log: createLog,
+  branches: createBranches,
   branch: createBranch,
   switch: createSwitch,
   add: createAdd,
@@ -325,7 +351,7 @@ const FACTORIES: Record<GitOperation, () => ToolDefinition> = {
 };
 
 export interface GitOptions {
-  /** Operations to expose. Default: status, diff, log, branch (read-only). */
+  /** Operations to expose. Default: status, diff, log, branches (read-only). */
   only?: GitOperation[];
   /** Operations to remove from the selected set. */
   except?: GitOperation[];

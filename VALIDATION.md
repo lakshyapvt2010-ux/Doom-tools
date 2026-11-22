@@ -62,3 +62,9 @@ A new `@agentic-tools/testing` package adds `mockTool`, `recordTools` and `repla
 ## MCP client (FR-021)
 
 A new `@agentic-tools/mcp-client` package registers tools from an external MCP server as untrusted tools. Seven tests use a real MCP SDK server/client pair: external/high classification that ignores readOnlyHint, fail-closed denial without an explicit `mcp.call` grant, approval required by default, validation before the server is reached, labeled untrusted results, isError mapping, host narrowing that cannot exceed external, selection caps and cancellation. Linux Node 22 only so far; the connection is in-memory, with no stdio or HTTP transport and no `list_changed` handling. See docs/mcp-client.md.
+
+## Web fetch, footprint gate and git default set
+
+- New `@agentic-tools/web` package with `web.fetch` (GET only), policy-classified by host, deny-by-default network, approval by default, redirects returned not followed, private destinations refused, bounded text output labeled untrusted. 8 tests with a local HTTP server. DNS rebinding and check-to-connect gaps remain; see docs/web.md.
+- New footprint regression test (docs/footprint.md) with budgets per default tool set.
+- Found and fixed a PRD conflict: the git default set contained `git.branch`, whose static upper bound is `write` (it can create branches). FR-019 and section 8.6 require read-only defaults. The default is now `git.branches` (list only); `git.branch` with create is opt-in. This renames a default tool, a small breaking change for the prototype. A test now asserts every default git and filesystem tool is statically read-only.

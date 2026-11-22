@@ -18,6 +18,8 @@ Source: the product owner's supplied PRD v0.2, prepared November 9, 2026. The ap
 | FR-018 and section 16 | Current maintained Node LTS matrix, Node-major diagnostics, read-only CI token permissions | Linux Node 22/24/26 test runs; macOS remains subject to actual CI result |
 | FR-014 | Mock, record and deterministic replay of tool interactions; replay cannot reach the real tool | `packages/testing/test/testing.test.ts` (8 tests) |
 | FR-021; section 10.3 | External MCP tools registered as untrusted, approval-gated, capability-gated tools | `packages/mcp-client/test/mcp-client.test.ts` (7 tests) |
+| Section 13 row 5; sections 9.1, 9.2 | Policy-gated HTTP fetch with host allowlist, private-address refusal, bounded untrusted output | `packages/web/test/web.test.ts` (8 tests) |
+| Section 16; FR-019; section 8.6 | Token-footprint budget gate; git default set made statically read-only (`git.branches`) | `packages/adversarial/test/footprint.test.ts`, `packages/git/test/git.test.ts` |
 | Section 17 | Runnable read-only repository assistant and observability/compatibility guides | Example smoke run, build/typecheck and integration tests |
 
 ## Deliberately not claimed

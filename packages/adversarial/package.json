@@ -22,7 +22,8 @@
     "@agentic-tools/git": "workspace:*",
     "@agentic-tools/runtime": "workspace:*",
     "@agentic-tools/security": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.32.2"
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@agentic-tools/web": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

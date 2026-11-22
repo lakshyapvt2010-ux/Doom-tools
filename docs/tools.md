@@ -21,14 +21,15 @@ Default set (read-only): `read`, `list`, `search`, `grep`, `diff`. Opt-in: `writ
 
 ## @agentic-tools/git
 
-Default set: `status`, `diff`, `log`, `branch` (list). Opt-in: `switch`, `add`, `reset`,
-`commit`, and `branch` with `create`.
+Default set: `status`, `diff`, `log`, `branches` (list, read-only). Opt-in: `branch` (list or create), `switch`, `add`, `reset`,
+`commit`.
 
 | Operation | Notes | Side effect |
 | --- | --- | --- |
 | git.status | branch + porcelain entries | read |
 | git.diff | staged?, ref?, pathspec? | read |
 | git.log | limit?, ref? | read |
+| git.branches | list local branches and current | read |
 | git.branch | list, or `create` (+ startPoint); no deletion | read / write |
 | git.switch | branch, create? | write |
 | git.add | pathspec[] | write |

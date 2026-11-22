@@ -38,8 +38,9 @@ async function run<T>(tool: ReturnType<typeof find>, input: unknown, ctx: ToolCo
 test("default set is read-only", () => {
   assert.deepEqual(
     git().map((t) => t.name).sort(),
-    ["git.branch", "git.diff", "git.log", "git.status"]
+    ["git.branches", "git.diff", "git.log", "git.status"]
   );
+  assert.ok(git().every((t) => t.sideEffect === "read"), "every default tool must be statically read-only");
 });
 
 test("status, log, branch list work on a clean repo", async () => {
@@ -53,7 +54,7 @@ test("status, log, branch list work on a clean repo", async () => {
   }
   const log = await run<{ commits: { subject: string }[] }>(find(tools, "git.log"), {}, ctx);
   if (log.status === "success") assert.equal(log.output.commits[0]?.subject, "initial");
-  const branch = await run<{ branches: string[] }>(find(tools, "git.branch"), {}, ctx);
+  const branch = await run<{ branches: string[] }>(find(tools, "git.branches"), {}, ctx);
   if (branch.status === "success") assert.deepEqual(branch.output.branches, ["main"]);
 });
 
@@ -83,7 +84,7 @@ test("write flow: branch create, switch, add, commit, reset", async () => {
 });
 
 test("branch classify narrows to read when only listing", () => {
-  const tools = git();
+  const tools = git({ only: ["branch"] });
   const branch = find(tools, "git.branch");
   const clsRead = branch.classify?.({});
   assert.equal(clsRead?.sideEffect, "read");
