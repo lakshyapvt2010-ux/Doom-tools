@@ -7,10 +7,11 @@
 
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ToolError } from "@agentic-tools/core";
+import { createBrowserCleanup } from "./lifecycle.js";
 
 export interface CdpSession {
   call<T = unknown>(method: string, params?: Record<string, unknown>, sessionId?: string): Promise<T>;
@@ -60,22 +61,52 @@ export async function launchChrome(options: { chromePath?: string; timeoutMs?: n
     "about:blank"
   ], { stdio: ["ignore", "ignore", "pipe"] });
 
-  const wsUrl = await new Promise<string>((resolve, reject) => {
-    let buf = "";
-    const timer = setTimeout(() => reject(new ToolError("provider_error", "Chrome did not expose a debugging port in time")), options.timeoutMs ?? 15000);
-    child.on("error", (e) => { clearTimeout(timer); reject(new ToolError("provider_error", `Could not launch Chrome: ${e.message}`)); });
-    child.stderr?.on("data", (d: Buffer) => {
-      buf += d.toString();
-      const m = buf.match(/DevTools listening on (ws:\/\/\S+)/);
-      if (m) { clearTimeout(timer); resolve(m[1]!); }
+  let socket: WebSocket | undefined;
+  const close = createBrowserCleanup(child, profile, () => socket?.close());
+  let ws: WebSocket;
+  try {
+    const wsUrl = await new Promise<string>((resolve, reject) => {
+      let buf = "";
+      const finish = (error?: Error, url?: string) => {
+        clearTimeout(timer);
+        child.removeListener("error", onError);
+        child.removeListener("exit", onExit);
+        child.stderr?.removeListener("data", onData);
+        if (error) reject(error); else resolve(url!);
+      };
+      const onError = (error: Error) => finish(new ToolError("provider_error", `Could not launch Chrome: ${error.message}`));
+      const onExit = () => finish(new ToolError("provider_error", "Chrome exited before exposing a debugging port"));
+      const onData = (data: Buffer) => {
+        buf = (buf + data.toString()).slice(-65536);
+        const match = buf.match(/DevTools listening on (ws:\/\/\S+)/);
+        if (match) finish(undefined, match[1]!);
+      };
+      const timer = setTimeout(() => finish(new ToolError("provider_error", "Chrome did not expose a debugging port in time")), options.timeoutMs ?? 15000);
+      child.once("error", onError);
+      child.once("exit", onExit);
+      child.stderr?.on("data", onData);
     });
-  });
 
-  const ws = new WebSocket(wsUrl);
-  await new Promise<void>((resolve, reject) => {
-    ws.onopen = () => resolve();
-    ws.onerror = () => reject(new ToolError("provider_error", "Could not connect to Chrome debugging socket"));
-  });
+    ws = socket = new WebSocket(wsUrl);
+    await new Promise<void>((resolve, reject) => {
+      const finish = (error?: Error) => {
+        clearTimeout(timer);
+        ws.onopen = null;
+        ws.onerror = null;
+        ws.onclose = null;
+        if (error) reject(error); else resolve();
+      };
+      const timer = setTimeout(() => finish(new ToolError("provider_error", "Chrome debugging socket connection timed out")), options.timeoutMs ?? 15000);
+      ws.onopen = () => finish();
+      ws.onerror = () => finish(new ToolError("provider_error", "Could not connect to Chrome debugging socket"));
+      ws.onclose = () => finish(new ToolError("provider_error", "Chrome debugging socket closed before connecting"));
+    });
+  } catch (error) {
+    try { await close(); } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], "Chrome launch failed and cleanup was incomplete");
+    }
+    throw error;
+  }
 
   let nextId = 1;
   const pending = new Map<number, Pending>();
@@ -114,15 +145,6 @@ export async function launchChrome(options: { chromePath?: string; timeoutMs?: n
     });
   }
 
-  let closed = false;
-  async function close(): Promise<void> {
-    if (closed) return;
-    closed = true;
-    try { ws.close(); } catch { /* ignore */ }
-    child.kill("SIGKILL");
-    rmSync(profile, { recursive: true, force: true });
-  }
-  process.once("exit", () => { try { child.kill("SIGKILL"); } catch { /* ignore */ } });
 
   return {
     call,
