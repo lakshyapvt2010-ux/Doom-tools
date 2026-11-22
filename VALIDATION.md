@@ -2,25 +2,51 @@
 
 This is a P0 prototype with partial P1/P2 extensions for review, aligned to the supplied PRD v0.2 dated November 9, 2026. It is not an alpha release or evidence of demand. The original prototype is preserved in the preceding baseline commit.
 
-## Current local checkpoint
+## Current local checkpoint, November 23
 
-The current code checkpoint, 1568650, has **271 passing tests on each of Linux
-Node 22.23.5, 24.22.3 and 26.13.1**, with zero failures, cancellations or skips.
-Build and strict typecheck pass. PostgreSQL cases use a real throwaway local
-cluster. Changes after a718ef6 are local and have no remote CI result. No macOS
-or Windows success is inferred from these Linux tests.
+Checkpoint cde6643 plus the final abnormal-Docker-exit guard has **285 passing
+tests on Linux Node 22.23.5, 24.22.3 and 26.13.1**, zero failures, cancellations
+or skips. Build and strict typecheck pass. PostgreSQL tests use a real local
+throwaway cluster. Docker's six executable-double tests do not execute real
+containers. Native filesystem/Git acceptance also passes on those three Linux
+versions, not Windows.
 
-A fresh source checkout at 1568650 passed offline frozen-lockfile installation
-from the existing cached dependency store, build, strict typecheck and all 271
-Linux Node 22 tests, without skips. All five examples and CLI doctor, config
-validation and token listing passed there. This is local clean-checkout evidence,
-not an external developer first-use result. The earlier empty-cache install
-covered 218 tests and is a separate historical check.
+New P0 fixes: inferred literal JSON Schema inputs; safe generic diagnostics for
+unknown exceptions; fail-closed handling of undeclared classifier capabilities;
+metadata/schema validation at registration; SemVer precedence with opaque MCP
+version compatibility. A packed-package consumer outside the workspace installs,
+strictly compiles and invokes core/runtime/security on Node 22/24/26. It is not
+an external developer trial and does not satisfy that people-dependent gate.
 
-The prior temporary push credential was revoked. No new credential, remote
-write, CI rerun, publication, deployment, spending or outreach was performed for
-this follow-up. Named desktop clients, hosted model quality and independent
-security review remain unverified.
+### Remote CI run 11
+
+Run 11 at 8a1df4a passed all six Ubuntu/macOS Node 22/24/26 jobs:
+https://github.com/MRIARC-08/tch-/actions/runs/45058558875
+
+Each Ubuntu job recorded 269 pass / 2 skip of 271. Each macOS job recorded
+268 pass / 3 skip of 271. Both real PostgreSQL tests skipped everywhere; macOS
+also skipped a loopback-hostname check. All 14 browser tests and all 27
+adversarial tests passed per job. This verifies the cleanup fix on macOS at that
+checkpoint, not newer unpushed code. Run 10 below is retained as historical
+failure evidence.
+
+### P1 validation still pending
+
+Docker implementation is opt-in and separate from host Bash, documented in
+[docs/docker.md](docs/docker.md). A task-local Docker daemon and image import
+worked, but real container startup failed because cgroups were not delegated.
+No container isolation check passed locally. The real acceptance script awaits
+a Docker-capable environment. No privileged workaround was attempted.
+
+Windows preparation fixes native policy separators and Git environment/null
+device handling. `scripts/check-platform-files-git.mjs` is ready for native
+acceptance, but no Windows runner result exists. Neither portable TypeScript
+nor Linux tests certify Windows.
+
+The current CI-extension decision is pending. No workflow changes, fresh token,
+new remote write or new run was used for these local commits. Existing paid
+billing settings were not changed. No publication, deployment, hosted model
+access or outreach took place.
 
 ## Remote CI run 10, inspected November 23, 2026
 
@@ -57,9 +83,8 @@ executable paths also use the shared cleanup. Exit hooks are removed after the
 child stops. Seven new regressions bring the browser package to 14 tests.
 
 The earlier 264-test local checkpoint retained the failing shutdown code. The
-271-test Linux matrix and fresh-checkout result validate the new local fix, but
-do not demonstrate that it fixes macOS. An authorized remote update and a new
-macOS CI run are still needed. No workflow was edited and run 10 was not rerun.
+271-test Linux matrix and fresh-checkout result validate the new local fix, and run 11 subsequently verified the fix on macOS at 8a1df4a. No workflow was
+edited and run 10 itself was not rerun.
 
 ## Evidence from the November 22 improvement pass
 

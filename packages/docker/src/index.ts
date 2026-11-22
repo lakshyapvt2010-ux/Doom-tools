@@ -88,7 +88,7 @@ export function dockerShell(options: DockerOptions): ToolDefinition[] {
       if (timedOut) throw new ToolError("timeout", "Docker command timed out; container cleanup was verified.");
       if (ctx.signal.aborted) throw new ToolError("cancelled", "Docker command cancelled; container cleanup was verified.");
       if (failed) throw failed;
-      if (!result || result.code === 125 || result.code === 126 || result.code === 127) throw new ToolError("execution_error", "Docker refused the container or could not start its shell. No host fallback was used.");
+      if (!result || result.code === null || result.code === 125 || result.code === 126 || result.code === 127) throw new ToolError("execution_error", "Docker refused the container or could not start its shell. No host fallback was used.");
       return success({ name: "docker.execute", version: "0.0.0" }, { exitCode: result.code, stdout: result.stdout, stderr: result.stderr }, result.omitted ? { truncation: { truncated: true, unit: "bytes", omitted: result.omitted, continuation: "Narrow the command output or raise the configured stream cap." } } : {});
     }
   });

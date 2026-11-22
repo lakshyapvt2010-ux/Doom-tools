@@ -68,3 +68,19 @@ is still a stated limitation.
   or external usability test was substituted.
 
 These changes are local after a718ef6 and have not been remotely CI-verified.
+
+
+## November 23 acceptance-audit follow-up
+
+Local commits after 8a1df4a close concrete P0 gaps: literal JSON Schema input
+inference, private exception diagnostics, undeclared-classifier fail-closed
+fallback, registration validation and semantic-version precedence. A real
+packed-package starter compiles and invokes outside workspace links.
+
+P1 implementation now includes a separate opt-in Docker shell factory and
+Windows path/Git preparation. Docker executable-double tests do not establish
+container isolation, and no native Windows result exists. See VALIDATION.md,
+docker.md and remaining-work.md. Local matrix: 285/285 on Linux Node22/24/26;
+remote run11 covers only 8a1df4a, passing all six Ubuntu/macOS jobs with the
+explicit PostgreSQL/hostname skips. Earlier local-only/next-CI statements above
+are historical to their sections, not the current state.
