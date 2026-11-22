@@ -5,7 +5,8 @@
  * framework; it covers what the browser tools need and no more.
  */
 
-import { spawn, type ChildProcess } from "node:child_process";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -21,13 +22,30 @@ interface Pending {
   reject: (e: Error) => void;
 }
 
+/** First Chrome/Chromium binary resolvable on this platform. */
+export function findChrome(): string {
+  for (const name of ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"]) {
+    try {
+      execFileSync("which", [name], { stdio: ["ignore", "pipe", "ignore"] });
+      return name;
+    } catch { /* not on PATH */ }
+  }
+  for (const abs of [
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium"
+  ]) {
+    if (existsSync(abs)) return abs;
+  }
+  return "google-chrome"; // surfaces a clear spawn error if truly absent
+}
+
 export interface LaunchedBrowser extends CdpSession {
   /** Attach a fresh page target and return its session id. */
   newTab(): Promise<string>;
 }
 
 export async function launchChrome(options: { chromePath?: string; timeoutMs?: number } = {}): Promise<LaunchedBrowser> {
-  const chromePath = options.chromePath ?? process.env.AGENTIC_TOOLS_CHROME ?? "google-chrome";
+  const chromePath = options.chromePath ?? process.env.AGENTIC_TOOLS_CHROME ?? findChrome();
   const profile = mkdtempSync(join(tmpdir(), "at-chrome-"));
   const child: ChildProcess = spawn(chromePath, [
     "--headless=new",
