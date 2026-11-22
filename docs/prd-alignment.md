@@ -50,3 +50,21 @@ budgets, host tokenizer hook, JSON serialization overhead and impossible-budget
 handling. Five regression tests. Default token estimates remain approximate;
 separate whole-envelope caps now cover errors and warnings. Adapter-wire budgeting
 is still a stated limitation.
+
+
+## Local envelope and native-approval follow-up
+
+- PRD 8.4/FR-022: separate complete-result byte/token caps include errors, metadata
+  and reserved audit warnings. MCP's final CallToolResult representation, with
+  both content copies and escaping, is measured in the runtime before audit.
+  JSON-RPC/HTTP and SDK-owned messages remain outside the cap.
+- PRD 9.5/FR-006: immutable plain-JSON snapshots prevent mutation while awaiting
+  approval. Deferred non-interactive IDs now resume once with exact classified
+  input, policy, selection, version and expiry checks. Storage is bounded and
+  process-local; these APIs do not authenticate host UI users.
+- PRD 9.5/10.2: opt-in native LangGraph interrupt/checkpoint/resume and explicit
+  OpenAI Agents SDK interruption bridges use runtime tickets. Real local SDK
+  tests cover approval, denial, expiry and changed inputs/policy. No hosted model
+  or external usability test was substituted.
+
+These changes are local after a718ef6 and have not been remotely CI-verified.

@@ -19,6 +19,9 @@ await serveMcp(toolkit, { transport: "stdio", name: "my-tools" });
 - Results arrive as `structuredContent` (the canonical envelope) plus a text rendering;
   failures carry `isError: true` with the stable error code intact.
 - Hidden/unknown calls also pass through the runtime for trace/audit/metrics coverage.
+- Result caps count both text and structured copies, escaping and CallToolResult
+  wrappers before terminal audit. JSON-RPC/HTTP headers and SDK-generated errors
+  are outside that cap. Impossible envelope configurations reject before execution.
 - Request cancellation reaches pending approvals and cooperative tools. Stdio-prompting
   approvers are excluded, including after another approver cannot decide.
 
@@ -38,8 +41,10 @@ const tools = toVercelAI(toolkit, {
 - Failures throw `ToolExecutionError` carrying the stable `code` (`validation`,
   `approval_required`, ...) and the full envelope on `.result`. `returnEnvelope: true`
   returns the envelope instead of throwing.
-- The AI SDK has no standard approval primitive, so approval-gated calls surface
-  `approval_required`; they are never skipped or weakened (PRD 9.5).
+- The tested AI SDK v5 adapter does not use a native approval primitive.
+  Approval-gated calls surface `approval_required` with a real, expiring deferred
+  runtime ticket. A trusted host can use `toolkit.resumeApproval` with the exact
+  tool/input after its human decision. Approval is never skipped (PRD 9.5).
 - The SDK execution `abortSignal` reaches the runtime and cooperative tool.
 - `nameForTool` maps canonical names to provider-specific naming rules. Collisions
   fail before exposure; runtime policy and trace identity still use the canonical name.
@@ -85,8 +90,10 @@ safe `validation` envelope without running the callback. Such framework-level
 rejections do not enter runtime audit; executed calls do. Cancellation config is forwarded. Selection and name collisions are
 checked. LangGraph 1.7.5 ToolNode integration is tested for successful calls and
 fail-closed approval errors, with handleToolErrors:false. No hosted model or
-full model-driven LangGraph loop has been tested. There is no native
-LangGraph interrupt bridge: runtime approvers still own approvals.
+full model-driven LangGraph loop has been tested. Opt-in
+`nativeApproval: { interrupt }` maps to real LangGraph checkpoint interruption
+and single-use runtime resume tickets. See [langgraph-approvals.md](langgraph-approvals.md)
+for host UI, expiry, process-local storage and replay limits.
 
 ## OpenAI Agents SDK (P1)
 
@@ -104,8 +111,18 @@ stay optional. Runtime validation remains mandatory. Outputs are JSON text.
 fallback. `ToolExecutionError` preserves codes and envelopes; `returnEnvelope`
 returns envelopes instead. Caller signals are forwarded.
 
-Native SDK approval never replaces runtime approval. There is no automatic
-interruption/resume bridge. Malformed JSON may fail in the SDK before runtime
-invocation; A real SDK Runner loop with its local ScriptedModel is tested, tracing
-disabled. Hosted providers and model performance remain unverified. Only the tested SDK minor ranges are declared as peers for both new
+Native SDK approval never replaces runtime approval. The explicit
+`createOpenAIAgentsApprovalBridge` helper couples a host-approved SDK interruption
+to a single-use runtime ticket. Raw SDK approve/alwaysApprove does not grant
+runtime permission. See [openai-approvals.md](openai-approvals.md) for expiry,
+restoration and authenticated-host requirements. Malformed JSON may fail in the
+SDK before runtime invocation. A real SDK Runner loop with local ScriptedModel
+and real interruption/resume is tested, with tracing disabled. Hosted providers and model performance remain unverified. Only the tested SDK minor ranges are declared as peers for both new
 adapters. Other versions require validation before expanding compatibility.
+
+
+For all framework adapters, truncated successful payloads return their envelope
+even in default output-only mode, so model-facing truncation markers are not
+lost. Ordinary complete successes keep the earlier output-only shape. Native
+framework rejections and prevalidation are outside a runtime invocation; no
+runtime execution trace is invented for them. See [output-budgets.md](output-budgets.md).

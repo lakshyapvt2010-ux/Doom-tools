@@ -4,12 +4,19 @@
 
 The supported Node majors for this prototype are 22, 24 and 26 on macOS/Linux. Node 20 is end-of-life and is no longer in the supported matrix. This follows the [official Node release table](https://nodejs.org/en/about/previous-releases), checked November 22, 2026. Package engines require Node >=22; the CLI checks the declared major-version matrix rather than claiming every newer version is supported.
 
-Per-tool platform matrix (PRD sections 14 and 22). "CI" means the workflow runs it on Ubuntu and macOS for Node 22, 24 and 26; check the actual run result before calling a platform green. Last checked run: https://github.com/MRIARC-08/tch-/actions (run 9, all 6 jobs passed).
+Per-tool platform matrix (PRD sections 14 and 22). The last verified baseline was
+run 9 (all six jobs passed). The workflow targets Ubuntu/macOS and Node22/24/26,
+but that baseline does not verify subsequent local commits. Run 10 targets the
+pushed a718ef6; its final result must be inspected separately. The newer local
+envelope/approval changes have no remote CI result yet. Current source:
+https://github.com/MRIARC-08/tch-/actions . All CI labels in the table refer to
+the previously verified baseline, not certification of the latest local tree.
 
 | Tool or package | Linux | macOS | Windows | Notes |
 | --- | --- | --- | --- | --- |
 | core, runtime, security, CLI | tested locally and CI | CI | untested | Pure Node. |
 | adapter-mcp (stdio and Streamable HTTP), adapter-vercel | tested locally and CI | CI | untested | HTTP binds to loopback by default. |
+| adapter-langchain, adapter-openai-agents | tested locally | latest local changes unverified | untested | Real SDK and native approval loops; no hosted provider. |
 | mcp-client, testing | tested locally and CI | CI | untested | Later local tests also cover real stdio spawn and HTTP connection; those changes await CI. |
 | filesystem.* | tested locally and CI | CI | not supported at P0 | Path and symlink semantics differ on Windows; not evaluated. |
 | git.* | tested locally and CI | CI | not supported at P0 | Needs a host `git` binary. Not a sandbox. |
@@ -44,4 +51,4 @@ Pass `wrapSchema: jsonSchema` from `ai` v5. Provider naming rules differ, so use
 
 The SDK's `abortSignal` is forwarded to the runtime. Failure codes remain on `ToolExecutionError.result`, or in the full envelope with `returnEnvelope: true`.
 
-Other SDK majors, hosted providers and live-model task quality are not certified. LangChain core 1.5.0 and OpenAI Agents 0.22.0 adapters are locally tested through actual SDK tool invocation. LangGraph 1.7.5 ToolNode and an OpenAI Runner loop with local ScriptedModel are also tested; no hosted model is certified. See docs/adapters.md.
+Other SDK majors, hosted providers and live-model task quality are not certified. LangChain core 1.5.0 and OpenAI Agents 0.22.0 adapters are locally tested through actual SDK tool invocation. LangGraph 1.7.5 StateGraph/ToolNode checkpoint interruption/resume and an OpenAI Runner loop with native interruption plus local ScriptedModel are also tested; no hosted model is certified. See docs/adapters.md.
