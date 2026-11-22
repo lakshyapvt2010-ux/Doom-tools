@@ -11,6 +11,7 @@
  */
 
 import { resolve } from "node:path";
+import { canonicalizeCapabilityPath } from "./paths-util.js";
 import type { Logger, ToolDefinition, ToolResult } from "@agentic-tools/core";
 import {
   ApprovalManager,
@@ -85,12 +86,12 @@ export interface Toolkit {
 }
 
 export function createToolkit(options: ToolkitOptions): Toolkit {
-  const workspace = resolve(options.workspace);
+  const workspace = canonicalizeCapabilityPath(resolve(options.workspace), ".");
   const memorySink = memoryAuditSink();
   const auditSinks: AuditSink[] = [memorySink, ...(options.auditSinks ?? [])];
   const policy = resolvePolicy({
     ...options.policy,
-    workspace: options.policy?.workspace ?? workspace,
+    workspace: canonicalizeCapabilityPath(workspace, options.policy?.workspace ?? workspace),
     ...(options.runtime?.defaultTimeoutMs !== undefined
       ? { timeouts: { defaultMs: options.runtime.defaultTimeoutMs } }
       : {}),

@@ -47,6 +47,10 @@ No competitor/overlap review or developer interviews were performed in this impr
 
 ## Final verification count
 
-Final source verification: **125 tests passed, 0 failed, 0 cancelled, 0 skipped on each of Linux Node 22.23.5, 24.22.3 and 26.13.1**. This is 24 more tests than the preserved 101-test baseline. The test package contains 22 adversarial/integration cases, including its original 16 cases.
+Final source verification: **127 tests passed, 0 failed, 0 cancelled, 0 skipped on each of Linux Node 22.23.5, 24.22.3 and 26.13.1**. This is 26 more tests than the preserved 101-test baseline. The test package contains 22 adversarial/integration cases, including its original 16 cases.
 
 A separate source-only verification directory passed frozen-lockfile installation, build and strict typecheck. Both checked-in examples and the CLI capability report were smoke-tested. No deployment, npm publication, hosted model call or external interview was performed. macOS workflow results are reported separately rather than inferred from local Linux runs.
+
+## Filesystem confinement follow-up
+
+The first CI run of the improved source passed its Linux jobs but failed on macOS because a symlink to a missing outside target was treated as an ordinary missing file. The follow-up resolves dangling symlink targets before policy checks in filesystem, runtime and Git paths, with a bounded recursion limit. Workspace and policy roots are also canonicalized so macOS-style symlink aliases use the same boundary. Two regression tests cover outside-target read/write denial and workspace-root aliases. Build, strict typecheck and all 127 tests passed locally on Linux Node 22.23.5, 24.22.3 and 26.13.1. This local result does not certify macOS; the follow-up workflow must be checked separately.

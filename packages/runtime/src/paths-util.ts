@@ -9,20 +9,33 @@
  * side effect.
  */
 
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, realpathSync, lstatSync, readlinkSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
-function canonicalize(target: string): string {
+function canonicalize(target: string, depth = 0): string {
+  if (depth > 40) throw new Error("Too many symlink resolutions.");
   let current = target;
   const remainder: string[] = [];
   while (!existsSync(current)) {
+    // existsSync follows links and is false for a dangling link. lstat
+    // still sees that link, which must be resolved BEFORE appending the
+    // missing tail or a write could follow it outside the workspace.
+    try {
+      if (lstatSync(current).isSymbolicLink()) {
+        const destination = resolve(dirname(current), readlinkSync(current));
+        return join(canonicalize(destination, depth + 1), ...remainder);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT" &&
+          (error as NodeJS.ErrnoException).code !== "ENOTDIR") throw error;
+    }
     const parent = dirname(current);
     if (parent === current) break;
     remainder.unshift(basename(current));
     current = parent;
   }
-  const realBase = existsSync(current) ? realpathSync(current) : current;
-  return remainder.length > 0 ? join(realBase, ...remainder) : realBase;
+  const base = existsSync(current) ? realpathSync(current) : current;
+  return remainder.length ? join(base, ...remainder) : base;
 }
 
 /** Resolve a capability request path against the workspace, canonicalized. */
