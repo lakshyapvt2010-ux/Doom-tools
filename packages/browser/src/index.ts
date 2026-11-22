@@ -8,12 +8,19 @@
  * world. Only http(s) pages: file:, chrome: and other schemes are refused,
  * and private/loopback destinations are refused unless the host opts in.
  *
+ * Network enforcement: every request the tab makes (initial navigation,
+ * redirects, subresources, XHR/fetch and click-driven navigation) is paused
+ * through CDP Fetch interception and validated before it is allowed out -
+ * scheme, private/loopback destination and a fresh DNS resolution at pause
+ * time. A request that fails validation is blocked, not just the first
+ * navigation. A DNS-rebinding window remains between our lookup and Chrome's
+ * connect on each hop; closing it fully needs resolver pinning, which CDP
+ * does not offer.
+ *
  * Honest limits: click/type use synthetic DOM events, not the trusted input
- * pipeline; some sites ignore them. Navigation checks DNS before loading but
- * Chrome resolves again when connecting, so a rebinding gap remains here
- * (unlike web.fetch). One shared headless tab per browser() instance; no
- * cookies are persisted between instances, no downloads, no uploads, no
- * form auto-submit, no multi-tab. Page content is untrusted.
+ * pipeline; some sites ignore them. One shared headless tab per browser()
+ * instance; no cookies are persisted between instances, no downloads, no
+ * uploads, no form auto-submit, no multi-tab. Page content is untrusted.
  */
 
 import { lookup } from "node:dns/promises";
@@ -90,7 +97,24 @@ export function browser(options: BrowserOptions = {}): BrowserTools {
   async function session(): Promise<{ cdp: LaunchedBrowser; tab: string }> {
     instance ??= launchChrome({ chromePath: options.chromePath, timeoutMs });
     const cdp = await instance;
-    tab ??= await cdp.newTab();
+    if (tab === null) {
+      tab = await cdp.newTab();
+      // Intercept EVERY request from this tab (documents, redirects,
+      // subresources, XHR) and validate before it is allowed out (PRD 9.1).
+      // Fail closed: a validation error blocks the request.
+      cdp.onEvent("Fetch.requestPaused", (params, eventSession) => {
+        if (eventSession !== tab) return;
+        const requestId = params.requestId as string;
+        const url = (params.request as { url?: string } | undefined)?.url ?? "";
+        void checkUrl(url, options.allowPrivateNetwork ?? false)
+          .then(() => cdp.call("Fetch.continueRequest", { requestId }, tab ?? undefined))
+          .catch(() =>
+            cdp.call("Fetch.failRequest", { requestId, errorReason: "BlockedByClient" }, tab ?? undefined)
+              .catch(() => undefined)
+          );
+      });
+      await cdp.call("Fetch.enable", { patterns: [{ urlPattern: "*" }] }, tab);
+    }
     return { cdp, tab };
   }
   function withTimeout<T>(p: Promise<T>, ctx: { signal: AbortSignal }): Promise<T> {

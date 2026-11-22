@@ -1,0 +1,13 @@
+{
+  "name": "@agentic-tools/example-rag-agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node index.mjs" },
+  "dependencies": {
+    "@agentic-tools/core": "workspace:*",
+    "@agentic-tools/runtime": "workspace:*",
+    "@agentic-tools/filesystem": "workspace:*"
+  }
+}

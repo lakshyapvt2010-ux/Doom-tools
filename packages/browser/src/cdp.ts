@@ -14,6 +14,8 @@ import { ToolError } from "@agentic-tools/core";
 
 export interface CdpSession {
   call<T = unknown>(method: string, params?: Record<string, unknown>, sessionId?: string): Promise<T>;
+  /** Subscribe to CDP events (optionally scoped to a session id). */
+  onEvent(method: string, cb: (params: Record<string, unknown>, sessionId?: string) => void): void;
   close(): Promise<void>;
 }
 
@@ -77,15 +79,27 @@ export async function launchChrome(options: { chromePath?: string; timeoutMs?: n
 
   let nextId = 1;
   const pending = new Map<number, Pending>();
+  const listeners: { method: string; cb: (params: Record<string, unknown>, sessionId?: string) => void }[] = [];
   ws.onmessage = (ev) => {
     try {
-      const msg = JSON.parse(String(ev.data)) as { id?: number; result?: unknown; error?: { message?: string } };
+      const msg = JSON.parse(String(ev.data)) as {
+        id?: number;
+        result?: unknown;
+        error?: { message?: string };
+        method?: string;
+        params?: Record<string, unknown>;
+        sessionId?: string;
+      };
       if (msg.id !== undefined) {
         const p = pending.get(msg.id);
         if (p) {
           pending.delete(msg.id);
           if (msg.error) p.reject(new ToolError("provider_error", `CDP error: ${msg.error.message ?? "unknown"}`));
           else p.resolve(msg.result);
+        }
+      } else if (msg.method) {
+        for (const l of listeners) {
+          if (l.method === msg.method) l.cb(msg.params ?? {}, msg.sessionId);
         }
       }
     } catch { /* ignore malformed frames */ }
@@ -113,6 +127,9 @@ export async function launchChrome(options: { chromePath?: string; timeoutMs?: n
   return {
     call,
     close,
+    onEvent(method, cb) {
+      listeners.push({ method, cb });
+    },
     async newTab() {
       const { targetId } = await call<{ targetId: string }>("Target.createTarget", { url: "about:blank" });
       const { sessionId } = await call<{ sessionId: string }>("Target.attachToTarget", { targetId, flatten: true });

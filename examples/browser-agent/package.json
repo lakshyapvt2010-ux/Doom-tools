@@ -1,0 +1,17 @@
+{
+  "name": "@agentic-tools/example-browser-agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@agentic-tools/runtime": "workspace:*",
+    "@agentic-tools/browser": "workspace:*",
+    "@agentic-tools/security": "workspace:*"
+  }
+}

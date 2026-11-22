@@ -12,6 +12,18 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
+  examples/browser-agent:
+    dependencies:
+      '@agentic-tools/browser':
+        specifier: workspace:*
+        version: link:../../packages/browser
+      '@agentic-tools/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      '@agentic-tools/security':
+        specifier: workspace:*
+        version: link:../../packages/security
+
   examples/coding-agent:
     dependencies:
       '@agentic-tools/adapter-mcp':
@@ -50,6 +62,18 @@ importers:
       '@agentic-tools/sqlite':
         specifier: workspace:*
         version: link:../../packages/sqlite
+
+  examples/rag-agent:
+    dependencies:
+      '@agentic-tools/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@agentic-tools/filesystem':
+        specifier: workspace:*
+        version: link:../../packages/filesystem
+      '@agentic-tools/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
 
   examples/repository-assistant:
     dependencies:

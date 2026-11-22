@@ -32,7 +32,7 @@ No competitor/overlap review or developer interviews were performed in this impr
 
 ## Remaining requirements and limits
 
-- Three examples ship: coding-agent wiring, a read-only repository assistant and a read-only data assistant (sqlite.query, policy grant, rejection of writes). RAG and browser examples are not implemented; their underlying tool packages are later-phase work. PRD section 17 lists these examples.
+- Five examples ship: coding-agent wiring, read-only repository assistant, read-only data assistant (sqlite.query), a local no-provider RAG example (custom keyword-retrieval tool + filesystem.read; lexical, no embeddings) and a headless browser agent example over a bundled loopback page. PRD section 17 lists these examples.
 - Output shaping has a toolkit payload byte budget and tool-specific pagination/limits, not model-specific output token accounting or general per-tool runtime budget overrides. Envelope, JSON escaping and structural overhead can exceed the nominal content cap; strict final-wire byte accounting remains open. Token footprints of definitions are approximate.
 - The MCP integration tests use an in-memory transport; stdio is the shipped launch transport. Streamable HTTP and outbound MCP client integration are P1 work.
 - No named desktop MCP client or hosted model provider was exercised. The SDK fixture is not evidence of provider behavior or autonomous agent quality.
@@ -93,8 +93,12 @@ New example `examples/data-assistant`: seeds a SQLite file, runs a parameterized
 
 ## Browser tools (P2)
 
-New `@agentic-tools/browser` package: navigate, dom, click, type, screenshot over a zero-dependency CDP driver for system Chrome headless. Every call needs an explicit `browser.control` grant; only http(s); private destinations refused by default; bounded untrusted output; 4 tests against a real headless Chrome and a local fixture page cover the full flow, fail-closed policy, scheme rejection and private-address refusal. Synthetic (not trusted-pipeline) input events, one shared tab, and a documented DNS-rebinding gap on navigation. See docs/browser.md. Requires a Chrome binary, present on the GitHub ubuntu/macos runners.
+New `@agentic-tools/browser` package: navigate, dom, click, type, screenshot over a zero-dependency CDP driver for system Chrome headless. Every call needs an explicit `browser.control` grant; only http(s); private destinations refused by default; bounded untrusted output; 4 tests against a real headless Chrome and a local fixture page cover the full flow, fail-closed policy, scheme rejection and private-address refusal. Network enforcement was then hardened: every request (redirects, subresources, XHR, click-driven navigation) is paused through CDP Fetch interception and validated with a fresh DNS lookup before release, and failing requests are blocked (2 more tests: redirect chain plus three subresource types, blocked dead redirect). Synthetic (not trusted-pipeline) input events, one shared tab, and a residual DNS-rebinding window between the per-request lookup and Chrome's connect remain documented. See docs/browser.md. Requires a Chrome binary, present on the GitHub ubuntu/macos runners.
 
 ## Audit retention bound
 
 The in-memory audit sink is now bounded at 10,000 events (oldest dropped, `dropped` counter exposed), closing the unbounded-retention limit noted above. 2 tests. Durable sinks are unchanged.
+
+## RAG and browser examples
+
+`examples/rag-agent` shows retrieval without providers: a custom `docs.retrieve` tool (defineTool, read-only, capability-gated) ranks workspace markdown by keyword overlap and filesystem.read fetches the winner. Lexical only; an embeddings provider is a later host decision. `examples/browser-agent` drives the browser package against a bundled loopback page with allowPrivateNetwork scoped to the demo. Both run offline with no model or API key and were executed in this pass.
