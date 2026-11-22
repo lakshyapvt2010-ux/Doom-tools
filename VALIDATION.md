@@ -4,17 +4,26 @@ This is a P0 prototype with partial P1/P2 extensions for review, aligned to the 
 
 ## Current local checkpoint
 
-The code checkpoint has 221 tests (218 plus three mapped-IPv6 regressions),
-all passing separately on Linux Node 22.23.5, 24.22.3 and 26.13.1.
-Before the IPv6 fix, a fresh source checkout using an empty pnpm store downloaded
-all 155 dependencies, then passed build/typecheck and 218 tests separately on
-Linux Node 22.23.5, 24.22.3 and 26.13.1 without skips. All five examples and CLI
-doctor/validate/tools-list passed from that checkout. The browser demo screenshot
-was inspected: the typed filter and resulting page text were visible. The
-additional IPv6 regressions are documented at the end; post-fix matrix results
-are reported there. None of this certifies macOS/Windows or replaces real CI.
-Earlier sections below record historical checkpoints and should not be read as
-the latest count. No npm publication, deployment, credentials or spending.
+The current code checkpoint has **263 passing tests on each of Linux Node
+22.23.5, 24.22.3 and 26.13.1**, with zero failures, cancellations or skips. Build
+and strict typecheck pass. The PostgreSQL cases use a real throwaway local cluster.
+These newer envelope, snapshot, deferred-resume and native-framework bridge
+commits are local after a718ef6 and have no remote CI result yet. Named desktop
+clients, hosted model quality, macOS/Windows and independent security review are
+not certified by these local tests.
+
+The earlier a718ef6 checkpoint was pushed after its 221-test Linux matrix; its
+remote CI run 10 must be checked separately. The one temporary repository-only
+push token was revoked and an authenticated request subsequently returned401.
+No new token was created for the later local commits. No publication, deployment,
+spending or outreach occurred.
+
+Before the mapped-IPv6 fix, a fresh source checkout with an empty pnpm store
+downloaded all155 dependencies and passed build/typecheck plus218 tests on the
+same three Linux Node versions. Five examples and CLI doctor/validate/tools-list
+passed from that checkout. That is historical clean-install evidence, not a new
+external developer first-use result. Earlier sections below are historical
+checkpoints and should not be read as the latest test count.
 
 ## Evidence from the November 22 improvement pass
 
@@ -47,7 +56,7 @@ The dated desk competitive review is now in docs/competitive-review.md. The requ
 ## Remaining requirements and limits
 
 - Five examples ship: coding-agent wiring, read-only repository assistant, read-only data assistant (sqlite.query), a local no-provider RAG example (custom keyword-retrieval tool + filesystem.read; lexical, no embeddings) and a headless browser agent example over a bundled loopback page. PRD section 17 lists these examples.
-- Output shaping now has toolkit/per-tool successful-payload byte and optional token budgets. JSON escaping and payload structure count against the cap. Host tokenizers are supported; the default estimator is approximate. Separate whole-result caps now cover compact runtime envelopes, including errors and audit warnings. Adapter/protocol framing remains outside these caps. See docs/output-budgets.md.
+- Output shaping now has toolkit/per-tool successful-payload byte and optional token budgets. JSON escaping and payload structure count against the cap. Host tokenizers are supported; the default estimator is approximate. Separate whole-result caps now cover compact runtime envelopes, including errors and audit warnings. MCP CallToolResult framing is included; JSON-RPC/HTTP and SDK/provider-owned framing remain outside these caps. See docs/output-budgets.md.
 - MCP server transports include stdio and Streamable HTTP; outbound MCP client tests cover both. The transport changes after 4e3ac25 await the next CI run.
 - No named desktop MCP client or hosted model provider was exercised. The SDK fixture is not evidence of provider behavior or autonomous agent quality.
 - Shell is trusted-host only. Cancellation and timeout stop waiting and signal cooperative tools; arbitrary host-side work can continue. There is no container/OS isolation backend.
