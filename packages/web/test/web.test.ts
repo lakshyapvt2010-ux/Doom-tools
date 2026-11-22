@@ -114,3 +114,21 @@ test("isPrivateHost covers common private ranges", () => {
   }
   for (const h of ["example.com", "8.8.8.8", "172.32.0.1"]) assert.equal(isPrivateHost(h), false, h);
 });
+
+test("a name that is not private-looking but resolves to loopback is refused at connect time", async (t) => {
+  const { lookup } = await import("node:dns/promises");
+  try {
+    const a = await lookup("ip6-localhost");
+    if (a.address !== "::1" && a.address !== "127.0.0.1") return t.skip("resolver mapping unavailable");
+  } catch {
+    return t.skip("ip6-localhost does not resolve here");
+  }
+  hits = [];
+  const { server, port } = await serve();
+  try {
+    const toolkit = kit(web(), { network: { allowHosts: ["ip6-localhost"] } });
+    const r = await toolkit.invoke("web.fetch", { url: `http://ip6-localhost:${port}/` });
+    assert.equal(r.status === "error" && r.error.code, "permission_denied");
+    assert.deepEqual(hits, []);
+  } finally { server.close(); }
+});

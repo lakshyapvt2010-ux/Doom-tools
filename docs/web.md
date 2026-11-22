@@ -9,4 +9,4 @@ PRD section 13 row 5 (P1). One operation, `web.fetch`: HTTP GET of an `http(s)` 
 - Bodies are capped (default 256 KiB, max 5 MiB) with an explicit truncation marker; only text-like content types are returned. Output is labeled untrusted.
 - URLs with embedded credentials are rejected. No cookies or credentials are sent.
 
-Limits: DNS rebinding and the gap between the address check and the connection are not closed. This is not an egress firewall and does not constrain host-mode shell. No browser automation, search provider or non-GET methods.
+Limits: resolved addresses are validated inside the connection's own DNS lookup, so the address connected to is the address checked (DNS rebinding between check and connect is closed for each hop). Redirect targets are re-checked on the next call. This is not an egress firewall and does not constrain host-mode shell. No proxy support; a configured HTTP proxy would bypass the check, so none is used. No browser automation, search provider or non-GET methods.

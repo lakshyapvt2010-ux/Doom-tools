@@ -65,6 +65,6 @@ A new `@agentic-tools/mcp-client` package registers tools from an external MCP s
 
 ## Web fetch, footprint gate and git default set
 
-- New `@agentic-tools/web` package with `web.fetch` (GET only), policy-classified by host, deny-by-default network, approval by default, redirects returned not followed, private destinations refused, bounded text output labeled untrusted. 8 tests with a local HTTP server. DNS rebinding and check-to-connect gaps remain; see docs/web.md.
+- New `@agentic-tools/web` package with `web.fetch` (GET only), policy-classified by host, deny-by-default network, approval by default, redirects returned not followed, private destinations refused, bounded text output labeled untrusted. 8 tests with a local HTTP server. Addresses are validated at connect time (custom lookup), closing the DNS rebinding gap per hop; covered by a test using a name that resolves to loopback (skipped if the resolver lacks the mapping). See docs/web.md.
 - New footprint regression test (docs/footprint.md) with budgets per default tool set.
 - Found and fixed a PRD conflict: the git default set contained `git.branch`, whose static upper bound is `write` (it can create branches). FR-019 and section 8.6 require read-only defaults. The default is now `git.branches` (list only); `git.branch` with create is opt-in. This renames a default tool, a small breaking change for the prototype. A test now asserts every default git and filesystem tool is statically read-only.
