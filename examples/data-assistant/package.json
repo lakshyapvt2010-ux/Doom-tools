@@ -1,0 +1,13 @@
+{
+  "name": "@agentic-tools/example-data-assistant",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node index.mjs" },
+  "dependencies": {
+    "@agentic-tools/runtime": "workspace:*",
+    "@agentic-tools/sqlite": "workspace:*",
+    "@agentic-tools/filesystem": "workspace:*"
+  }
+}

@@ -32,7 +32,7 @@ No competitor/overlap review or developer interviews were performed in this impr
 
 ## Remaining requirements and limits
 
-- Two examples ship: coding-agent wiring and a read-only repository assistant. RAG, database and browser examples are not implemented; their underlying tool packages are also later-phase work. PRD section 17 lists these examples.
+- Three examples ship: coding-agent wiring, a read-only repository assistant and a read-only data assistant (sqlite.query, policy grant, rejection of writes). RAG and browser examples are not implemented; their underlying tool packages are later-phase work. PRD section 17 lists these examples.
 - Output shaping has a toolkit payload byte budget and tool-specific pagination/limits, not model-specific output token accounting or general per-tool runtime budget overrides. Envelope, JSON escaping and structural overhead can exceed the nominal content cap; strict final-wire byte accounting remains open. Token footprints of definitions are approximate.
 - The MCP integration tests use an in-memory transport; stdio is the shipped launch transport. Streamable HTTP and outbound MCP client integration are P1 work.
 - No named desktop MCP client or hosted model provider was exercised. The SDK fixture is not evidence of provider behavior or autonomous agent quality.
@@ -80,3 +80,9 @@ New `@agentic-tools/sqlite` package with `sqlite.query` (read-only, single state
 ## Competitive review (section 20, first half)
 
 docs/competitive-review.md is a dated (November 22, 2026) source-grounded landscape review across the PRD's categories: agent SDK permission systems (Claude Agent SDK, OpenAI Agents SDK, Vercel AI SDK, LangGraph HITL), reference MCP servers, five MCP gateway/proxy projects (the closest overlap), guardrail layers (NeMo, Invariant, policy-as-code) and sandbox providers (E2B, Daytona). It answers the three review questions provisionally and records a candidate wedge statement. It is desk research only: the 5-10 developer conversations and the go/no-go decision remain undone, so the gate is NOT passed.
+
+## Clean-install validation and remaining examples
+
+Fresh `git clone`, `pnpm install --frozen-lockfile`, build, strict typecheck and the full suite pass from a clean checkout on Linux Node 22: 171 tests, 0 fail. Both earlier examples and the new data-assistant example run from that checkout, and the CLI (help, validate, tools list) works. Note: the pnpm store cache on this machine was warm, so dependency resolution was not exercised from an empty cache; CI does that on every push.
+
+New example `examples/data-assistant`: seeds a SQLite file, runs a parameterized read through the policy-granted sqlite.read capability, shows a rejected DELETE and a filesystem listing. No model or API key.

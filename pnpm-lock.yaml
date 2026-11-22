@@ -39,6 +39,18 @@ importers:
         specifier: workspace:*
         version: link:../../packages/security
 
+  examples/data-assistant:
+    dependencies:
+      '@agentic-tools/filesystem':
+        specifier: workspace:*
+        version: link:../../packages/filesystem
+      '@agentic-tools/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      '@agentic-tools/sqlite':
+        specifier: workspace:*
+        version: link:../../packages/sqlite
+
   examples/repository-assistant:
     dependencies:
       '@agentic-tools/filesystem':
