@@ -82,7 +82,7 @@ export function toVercelAI(
         if (result.status === "error" && !options.returnEnvelope) {
           throw new ToolExecutionError(tool.name, result);
         }
-        return options.returnEnvelope ? result : (result as { output?: unknown }).output;
+        return options.returnEnvelope || result.truncation ? result : (result as { output?: unknown }).output;
       }
     };
   }

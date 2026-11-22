@@ -82,3 +82,10 @@ test("non-exposed tools cannot be called through the adapter (FR-019)", async ()
   const tools = toVercelAI(narrowed);
   assert.deepEqual(Object.keys(tools), ["test.read"]);
 });
+
+test("default model rendering retains runtime truncation markers", async () => {
+ const output=defineTool({name:"test.large",description:"Large output",inputSchema:{type:"object"},sideEffect:"read",execute:async()=>"x".repeat(1000)});
+ const toolkit=createToolkit({workspace:mkdtempSync(join(tmpdir(),"at-vc-cut-")),tools:[output],policy:{budgets:{maxOutputBytes:20}}});
+ const result=await toVercelAI(toolkit)[output.name]!.execute({}) as {status:string,truncation:{truncated:boolean,continuation:string}};
+ assert.equal(result.status,"success");assert.equal(result.truncation?.truncated,true);assert.match(result.truncation?.continuation,/Re-invoke/);
+});

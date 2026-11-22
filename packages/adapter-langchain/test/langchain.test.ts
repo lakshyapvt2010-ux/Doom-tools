@@ -129,3 +129,11 @@ test("LangGraph ToolNode runs selected tools and keeps runtime approval failures
  assert.equal(JSON.parse(output.messages[0]!.content as string),"read:graph");
  await assert.rejects(()=>node.invoke({messages:[new AIMessage({content:"",tool_calls:[{name:"test_danger",args:{},id:"danger-call",type:"tool_call"}]})]}), (e:unknown)=>e instanceof ToolExecutionError && e.code==='approval_required');
 });
+
+test("default model rendering retains runtime truncation markers", async t => {
+ const workspace=mkdtempSync(join(tmpdir(),"at-lc-cut-"));t.after(()=>rmSync(workspace,{recursive:true,force:true}));
+ const output=defineTool({name:"test.large",description:"Large output",inputSchema:{type:"object"},sideEffect:"read",execute:async()=>"x".repeat(1000)});
+ const toolkit=createToolkit({workspace,tools:[output],policy:{budgets:{maxOutputBytes:20}}});
+ const result=JSON.parse(await toLangChain(toolkit)[0]!.invoke({}) as string);
+ assert.equal(result.status,"success");assert.equal(result.truncation?.truncated,true);assert.match(result.truncation?.continuation,/Re-invoke/);
+});

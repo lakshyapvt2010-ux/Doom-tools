@@ -81,3 +81,9 @@ framing or SDK-generated validation failures. Strict final-wire budgeting is
 still open. In-memory tool/provider output is materialized before shaping; these
 limits do not prevent excessive upstream allocation and do not replace
 tool-specific pagination or response bounds.
+
+Framework default rendering now switches to the full envelope when the runtime
+truncates a successful payload. LangChain, OpenAI Agents and Vercel adapters must
+not discard the marker while returning a bare shortened payload. Complete,
+untruncated successes keep their earlier output-only shape. MCP text rendering
+uses compact JSON; its separate structured copy still adds protocol overhead.

@@ -63,3 +63,10 @@ test("real Runner executes a tool loop with a local scripted model", async () =>
  assert.match(request,/runner/);
  assert.match(request,/value/);
 });
+
+test("default model rendering retains runtime truncation markers", async () => {
+ const output=defineTool({name:"test.large",description:"Large output",inputSchema:{type:"object"},sideEffect:"read",execute:async()=>"x".repeat(1000)});
+ const toolkit=createToolkit({workspace:mkdtempSync(join(tmpdir(),"at-oa-cut-")),tools:[output],policy:{budgets:{maxOutputBytes:20}}});
+ const result=JSON.parse(await toOpenAIAgents(toolkit)[0]!.invoke(context(),'{}'));
+ assert.equal(result.status,"success");assert.equal(result.truncation?.truncated,true);assert.match(result.truncation?.continuation,/Re-invoke/);
+});

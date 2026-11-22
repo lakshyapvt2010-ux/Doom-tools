@@ -114,7 +114,7 @@ function toMcpCallResult(result: ToolResult): {
   isError?: boolean;
 } {
   return {
-    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+    content: [{ type: "text", text: JSON.stringify(result) }],
     structuredContent: result as unknown as Record<string, unknown>,
     ...(result.status === "error" ? { isError: true } : {})
   };

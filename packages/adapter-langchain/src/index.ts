@@ -68,7 +68,7 @@ export function toLangChain(
       schema: tool.inputSchema as JSONSchema as never,
       func: async (args: unknown, _runManager?: unknown, config?: { signal?: AbortSignal }) => {
         const result = await toolkit.invoke(tool.name, args, { signal: config?.signal });
-        if (options.returnEnvelope) return JSON.stringify(result);
+        if (options.returnEnvelope || result.truncation) return JSON.stringify(result);
         if (result.status === "success") return JSON.stringify(result.output);
         throw new ToolExecutionError(tool.name, result);
       }
@@ -83,7 +83,7 @@ export function toLangChain(
         const result = failure({ name: tool.name, version: tool.version }, {
           code: "validation", message: "Tool input did not match the input schema."
         });
-        if (options.returnEnvelope) return JSON.stringify(result);
+        if (options.returnEnvelope || result.truncation) return JSON.stringify(result);
         throw new ToolExecutionError(tool.name, result);
       }
     }) as typeof exposed.call;

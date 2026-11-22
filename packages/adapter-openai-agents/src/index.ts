@@ -43,7 +43,7 @@ export function toOpenAIAgents(toolkit: Toolkit, options: ToOpenAIAgentsOptions 
       errorFunction: null,
       execute: async (args: unknown, _context, details) => {
         const result = await toolkit.invoke(definition.name, args, { signal: details?.signal });
-        if (options.returnEnvelope) return JSON.stringify(result);
+        if (options.returnEnvelope || result.truncation) return JSON.stringify(result);
         if (result.status === "success") return JSON.stringify(result.output) ?? "null";
         throw new ToolExecutionError(definition.name, result);
       }
