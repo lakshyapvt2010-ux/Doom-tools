@@ -7,7 +7,7 @@
  */
 
 import { realpathSync, existsSync, lstatSync, readlinkSync } from "node:fs";
-import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ToolError } from "@agentic-tools/core";
 
 function isWithin(root: string, candidate: string): boolean {
@@ -79,8 +79,7 @@ export function resolveWithin(root: string, inputPath: string): ResolvedPath {
       `Path "${inputPath}" resolves outside the workspace root.`
     );
   }
-  const relative = canonical.slice(resolvedRoot.length).replace(new RegExp(`^\\${sep}`), "") || ".";
-  return { absolute: canonical, relative };
+  return { absolute: canonical, relative: relative(resolvedRoot, canonical) || "." };
 }
 
 /** True when the path is a symlink (used by tools that refuse to follow them). */
