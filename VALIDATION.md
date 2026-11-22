@@ -130,3 +130,14 @@ attempts INSERT and is rejected by the server. Each query uses BEGIN READ ONLY;
 a transaction-mode downgrade and actual row cap are tested. Connection abort
 cleanup improved. Read-only SQL is not containment for privileged functions;
 least-privilege role and function restrictions remain host responsibilities.
+
+## Configurable HTTP client audit gap
+
+The final P1 audit found that GET-only web.fetch did not satisfy the separate
+configurable HTTP-client requirement. Opt-in web.request now supports bounded
+UTF-8 bodies, safe-header restrictions and GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS.
+Every call is external/high-risk and policy/approval-gated; defaults unchanged.
+It shares fetch's connect-time DNS checks, response caps and redirect refusal.
+Five tests use a local server; no external mutations or credentials. No built-in
+authentication, proxy, cookies, multipart or binary-response support. Secrets in
+custom payloads are the host's responsibility, not a claimed scanner guarantee.

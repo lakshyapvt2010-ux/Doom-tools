@@ -34,3 +34,27 @@ connect-time DNS checks of `web.fetch` do NOT automatically apply to callbacks.
 The provider response is materialized before shaping, so the callback also owns
 its upstream response/memory bound. No real search backend or provider account
 has been validated. Choosing a default backend remains PRD open question 6.
+
+## Configurable HTTP client (P1)
+
+`web({ only: ["request"] })` exposes opt-in `web.request`; default `web()` still
+exposes GET-only `web.fetch`. The separate P1 HTTP-client requirement is not
+satisfied by calling a GET-only fetch client configurable.
+
+Input: `url`, `method` (GET by default; GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS),
+optional UTF-8 `body` (64 KiB maximum, not for GET/HEAD) and string `headers`
+(30 maximum, each value at most 2048 characters). Common credential headers,
+cookies, host and hop-by-hop/transport headers are refused. Do not put secrets
+in bodies, query parameters or custom headers; this is not a general secret
+scanner. There is no built-in authentication or cookie jar. Authenticated APIs
+need a separate host-owned integration that keeps credentials out of model input.
+
+Every request is statically external/high-risk, including GET, and passes the
+same runtime host allowlist and approval path. POST/PUT/PATCH/DELETE can change
+remote state; exposing this tool is an explicit host choice, never a default.
+Connect-time DNS/private-network checks, response bounds and untrusted labeling
+are shared with fetch. Redirects, including 307, are returned and never followed
+or replayed with a body. Response headers other than content type and redirect
+target are not exposed. No proxy support, multipart uploads or binary responses.
+Five local fixture tests cover method/body/header forwarding, policy/approval
+before network, rejected input, opt-in risk bounds and non-replayed redirects.

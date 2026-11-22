@@ -39,3 +39,8 @@ structured-tool adapter and OpenAI Agents function-tool adapter are implemented
 and tested locally with their real SDKs. See docs/adapters.md for the exact
 verified boundaries and framework-prevalidation/approval-bridge limits. Docker, Windows,
 full model-driven LangGraph loops, hosted models and next-push CI are not validated by these tests.
+
+Separate P1 HTTP-client coverage: opt-in `web.request` supports configurable
+methods, bounded bodies and non-secret headers, with high-risk external
+classification and the shared fetch network checks. Five local-server tests.
+No built-in authentication; no live external API mutation was exercised.

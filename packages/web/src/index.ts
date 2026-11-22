@@ -1,7 +1,8 @@
 /**
  * @agentic-tools/web: policy-gated HTTP fetch (PRD sections 9.1, 13 row 5; P1).
  *
- * Two operations: `web.fetch` (GET only) and, when the host configures a
+ * `web.fetch` defaults to GET. Opt-in `web.request` supports configurable
+ * methods and UTF-8 bodies; every call is high-risk/external. With a
  * SearchProvider, `web.search`. No default search provider ships; picking one
  * is a host decision (PRD open question 6). The tool classifies each call
  * with the concrete host so the runtime's network policy decides (deny-by-default).
@@ -23,7 +24,7 @@ import { isIP } from "node:net";
 import { ToolError, defineTool } from "@agentic-tools/core";
 import type { ToolDefinition } from "@agentic-tools/core";
 
-export const WEB_OPERATIONS = ["fetch", "search"] as const;
+export const WEB_OPERATIONS = ["fetch", "search", "request"] as const;
 export type WebOperation = (typeof WEB_OPERATIONS)[number];
 export const WEB_DEFAULT_OPERATIONS: readonly WebOperation[] = ["fetch"];
 
@@ -90,15 +91,15 @@ function headerOf(res: IncomingMessage, name: string): string | null {
  * GET with a connect-time lookup: the address the socket connects to is the
  * one validated here, so DNS rebinding between check and connect is closed.
  */
-function request(url: URL, signal: AbortSignal, blockPrivate: boolean): Promise<IncomingMessage> {
+function request(url: URL, signal: AbortSignal, blockPrivate: boolean, method = "GET", body?: string, headers: Record<string, string> = {}): Promise<IncomingMessage> {
   return new Promise((resolve, reject) => {
     const lib = url.protocol === "https:" ? https : http;
     const req = lib.request(
       url,
       {
-        method: "GET",
+        method,
         signal,
-        headers: { accept: "text/*, application/json, application/xml", "user-agent": "agentic-tools-web/0.1" },
+        headers: { accept: "text/*, application/json, application/xml", "user-agent": "agentic-tools-web/0.1", ...headers, ...(body !== undefined ? {"content-length": String(Buffer.byteLength(body, "utf8"))} : {}) },
         lookup: (host, opts, cb) => {
           dnsLookup(host, opts, (err, address, family) => {
             if (err) return cb(err, address as never, family as never);
@@ -115,7 +116,7 @@ function request(url: URL, signal: AbortSignal, blockPrivate: boolean): Promise<
       resolve
     );
     req.on("error", reject);
-    req.end();
+    req.end(body);
   });
 }
 
@@ -149,32 +150,55 @@ export function web(options: WebOptions = {}): ToolDefinition[] {
     throw new Error("web search requires options.searchProvider; no default provider ships (PRD open question 6)");
   }
   const tools: ToolDefinition[] = [];
-  if (ops.has("fetch")) {
+  for (const operation of ["fetch", "request"] as const) {
+    if (!ops.has(operation)) continue;
+    const configurable = operation === "request";
     tools.push(
       defineTool({
-        name: "web.fetch",
+        name: `web.${operation}`,
         description:
-          "HTTP GET a URL and return its text. Redirects are not followed; the result names the redirect target. Output is untrusted data.",
+          configurable
+            ? "Make a configurable HTTP request. Can mutate remote state. Redirects are never followed. Output is capped and untrusted."
+            : "HTTP GET a URL and return its text. Redirects are not followed; the result names the redirect target. Output is untrusted data.",
         version: "0.1.0",
         inputSchema: {
           type: "object",
-          properties: { url: { type: "string", description: "Absolute http(s) URL" } },
+          properties: {
+            url: { type: "string", description: "Absolute http(s) URL" },
+            ...(configurable ? {
+              method: {type:"string", enum:["GET","HEAD","POST","PUT","PATCH","DELETE","OPTIONS"]},
+              body: {type:"string", description:"UTF-8 request body, at most 64 KiB"},
+              headers: {type:"object", additionalProperties:{type:"string"}, description:"Non-secret headers only; common credential, cookie, host and transport headers are refused"}
+            } : {})
+          },
           required: ["url"],
           additionalProperties: false
         },
         sideEffect: "external",
         capabilities: ["network.http"],
-        risk: "medium",
+        risk: configurable ? "high" : "medium",
         tags: ["web", "network"],
         classify: (input: { url: string }) => {
           const url = parseUrl(input.url);
           return {
             sideEffect: "external",
-            risk: "medium",
+            risk: configurable ? "high" : "medium",
             capabilities: [{ name: "network.http", host: url.hostname.toLowerCase() }]
           };
         },
-        execute: async (input: { url: string }, ctx) => {
+        execute: async (input: { url: string; method?: string; body?: string; headers?: Record<string,string> }, ctx) => {
+          const method = configurable ? input.method ?? "GET" : "GET";
+          const body = configurable ? input.body : undefined;
+          const headers = configurable ? input.headers ?? {} : {};
+          if (body !== undefined && (Buffer.byteLength(body, "utf8") > 65536 || ["GET", "HEAD"].includes(method))) {
+            throw new ToolError("validation", "Request body exceeds 64 KiB or is not allowed for this method");
+          }
+          if (Object.keys(headers).length > 30) throw new ToolError("validation", "Too many request headers");
+          for (const [name, value] of Object.entries(headers)) {
+            if (!/^[a-zA-Z0-9-]+$/.test(name) || /^(authorization|proxy-authorization|x-api-key|api-key|x-auth-token|cookie|set-cookie|host|connection|transfer-encoding|content-length|upgrade|te|trailer|expect)$/i.test(name) || /[\r\n]/.test(value) || value.length > 2048) {
+              throw new ToolError("validation", "Unsafe or credential-bearing request header");
+            }
+          }
           const url = parseUrl(input.url);
           if (!options.allowPrivateNetwork && isPrivateHost(url.hostname)) {
             throw new ToolError("permission_denied", "Private or loopback destinations are not allowed");
@@ -183,7 +207,7 @@ export function web(options: WebOptions = {}): ToolDefinition[] {
           const signal = AbortSignal.any([ctx.signal, timeout]);
           let res: IncomingMessage;
           try {
-            res = await request(url, signal, !options.allowPrivateNetwork);
+            res = await request(url, signal, !options.allowPrivateNetwork, method, body, headers);
           } catch (error) {
             if (error instanceof ToolError) throw error;
             if (ctx.signal.aborted) throw new ToolError("cancelled", "Request cancelled");
