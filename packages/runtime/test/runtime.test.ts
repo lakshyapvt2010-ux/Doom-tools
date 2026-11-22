@@ -242,10 +242,10 @@ test("output budgets truncate deterministically with explicit markers (FR-022)",
   const res = await tk.invoke<string>("test.big", {});
   assert.equal(res.status, "success");
   if (res.status === "success") {
-    assert.equal((res.output as string).length, 1000);
+    assert.equal((res.output as string).length, 998);
     assert.equal(res.truncation?.truncated, true);
     assert.equal(res.truncation?.unit, "bytes");
-    assert.equal(res.truncation?.omitted, 9000);
+    assert.equal(res.truncation?.omitted, 9002);
     assert.ok(res.truncation?.continuation);
   }
 });

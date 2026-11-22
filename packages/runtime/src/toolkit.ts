@@ -54,6 +54,8 @@ export interface ToolkitOptions {
     backend?: "local";
     defaultTimeoutMs?: number;
     maxOutputBytes?: number;
+    /** Synchronous host tokenizer for serialized JSON payloads. Must be pure. */
+    countOutputTokens?: (text: string) => number;
   };
   logger?: Logger;
 }
@@ -96,7 +98,7 @@ export function createToolkit(options: ToolkitOptions): Toolkit {
       ? { timeouts: { defaultMs: options.runtime.defaultTimeoutMs } }
       : {}),
     ...(options.runtime?.maxOutputBytes !== undefined
-      ? { budgets: { maxOutputBytes: options.runtime.maxOutputBytes } }
+      ? { budgets: { ...options.policy?.budgets, maxOutputBytes: options.runtime.maxOutputBytes } }
       : {})
   });
   if (policy.auditJsonlPath) {
@@ -129,6 +131,7 @@ export function createToolkit(options: ToolkitOptions): Toolkit {
     services: options.services ?? {},
     traces: new TraceCollector(),
     metrics: new MetricsCollector(),
+    countOutputTokens: options.runtime?.countOutputTokens,
     ...(options.logger !== undefined ? { logger: options.logger } : {})
   };
 

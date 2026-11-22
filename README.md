@@ -158,6 +158,7 @@ HTTP/web/database/browser tools, mock/replay, Windows support, additional adapte
 - [docs/quickstart.md](docs/quickstart.md) — install to first invocation
 - [docs/security.md](docs/security.md) — trust modes and their real guarantees
 - [docs/approvals.md](docs/approvals.md) — approvers and non-interactive behavior
+- [docs/output-budgets.md](docs/output-budgets.md) - toolkit/per-tool payload byte and token caps
 - [docs/selection.md](docs/selection.md) — the four selection levels and token footprint
 - [docs/tools.md](docs/tools.md) — tool reference
 - [docs/adapters.md](docs/adapters.md) — MCP and Vercel AI SDK

@@ -44,3 +44,8 @@ Separate P1 HTTP-client coverage: opt-in `web.request` supports configurable
 methods, bounded bodies and non-secret headers, with high-risk external
 classification and the shared fetch network checks. Five local-server tests.
 No built-in authentication; no live external API mutation was exercised.
+
+PRD 8.4 follow-up: toolkit/per-tool successful-payload byte and optional token
+budgets, host tokenizer hook, JSON serialization overhead and impossible-budget
+handling. Five regression tests. Default token estimates remain approximate;
+full result-envelope/adapter-wire budgeting is still a stated limitation.

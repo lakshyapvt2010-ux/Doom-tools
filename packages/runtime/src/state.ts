@@ -30,6 +30,7 @@ export interface ToolkitState {
   logger?: Logger;
   traces: TraceCollector;
   metrics: MetricsCollector;
+  countOutputTokens?: (text: string) => number;
 }
 
 export interface SelectionCriteria {

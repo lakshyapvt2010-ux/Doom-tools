@@ -85,6 +85,10 @@ export interface PolicyConfig {
   budgets?: {
     /** Max serialized output bytes before truncation. Default 32768. */
     maxOutputBytes?: number;
+    /** Serialized payload token budget; default counter is approximate. */
+    maxOutputTokens?: number;
+    /** Per-tool caps may narrow, never widen, toolkit budgets. */
+    perTool?: Record<string, { maxOutputBytes?: number; maxOutputTokens?: number }>;
   };
   /** Default per-invocation timeout in ms. Default 60000. */
   timeouts?: { defaultMs?: number };
@@ -108,6 +112,8 @@ export interface ResolvedPolicy {
   auditPayloads: boolean;
   auditJsonlPath?: string;
   maxOutputBytes: number;
+  maxOutputTokens?: number;
+  perToolOutputBudgets: Record<string, {maxOutputBytes?: number; maxOutputTokens?: number}>;
   defaultTimeoutMs: number;
 }
 
@@ -130,8 +136,15 @@ export function resolvePolicy(config: PolicyConfig): ResolvedPolicy {
     secrets: config.secrets ?? [],
     auditPayloads: config.audit?.payloads ?? false,
     maxOutputBytes: config.budgets?.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES,
+    maxOutputTokens: config.budgets?.maxOutputTokens,
+    perToolOutputBudgets: config.budgets?.perTool ?? {},
     defaultTimeoutMs: config.timeouts?.defaultMs ?? DEFAULT_TIMEOUT_MS
   };
+  for (const budget of [{maxOutputBytes:resolved.maxOutputBytes, maxOutputTokens:resolved.maxOutputTokens}, ...Object.values(resolved.perToolOutputBudgets)]) {
+    for (const value of Object.values(budget)) {
+      if (value !== undefined && (!Number.isSafeInteger(value) || value < 1)) throw new Error("Output budgets must be positive safe integers.");
+    }
+  }
   if (config.audit?.jsonlPath !== undefined) {
     resolved.auditJsonlPath = config.audit.jsonlPath;
   }

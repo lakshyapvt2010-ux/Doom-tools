@@ -7,19 +7,10 @@
  * cut and how to retrieve more.
  */
 
-import type { ToolResult, ToolSuccess, TruncationInfo } from "@agentic-tools/core";
+import type { ToolResult, ToolSuccess } from "@agentic-tools/core";
 
 function byteLength(value: unknown): number {
   return Buffer.byteLength(JSON.stringify(value) ?? "", "utf8");
-}
-
-function truncateUtf8(text: string, maxBytes: number): { text: string; omitted: number } {
-  const buf = Buffer.from(text, "utf8");
-  if (buf.length <= maxBytes) return { text, omitted: 0 };
-  let end = Math.max(0, Math.floor(maxBytes));
-  // Back off an incomplete UTF-8 code point instead of introducing U+FFFD.
-  while (end > 0 && ((buf[end] ?? 0) & 0xc0) === 0x80) end--;
-  return { text: buf.subarray(0, end).toString("utf8"), omitted: buf.length - end };
 }
 
 const CONTINUATION_HINT =
@@ -29,76 +20,67 @@ const CONTINUATION_HINT =
  * Apply a byte budget to a successful result. Deterministic: the same
  * output and budget always produce the same truncated result.
  */
-export function shapeResult<T>(result: ToolResult<T>, maxOutputBytes: number): ToolResult<T> {
+export function shapeResult<T>(
+  result: ToolResult<T>, maxOutputBytes: number,
+  maxOutputTokens?: number, countTokens: (text: string) => number = estimateTokens
+): ToolResult<T> {
   if (result.status !== "success") return result;
-  const size = byteLength(result.output);
-  if (size <= maxOutputBytes) return result;
-
-  const marker = (unit: string, omitted: number, continuation?: string): TruncationInfo => ({
-    truncated: true,
-    unit,
-    omitted,
-    ...(continuation !== undefined ? { continuation } : {})
-  });
-
-  // String output: cut at the byte boundary.
-  if (typeof result.output === "string") {
-    const { text, omitted } = truncateUtf8(result.output, maxOutputBytes);
-    return {
-      ...result,
-      output: text as T,
-      truncation: marker("bytes", omitted, CONTINUATION_HINT)
-    };
-  }
-
-  // Array output: keep the largest prefix that fits.
-  if (Array.isArray(result.output)) {
-    const items = result.output as unknown[];
-    let kept = 0;
-    for (let i = 0; i < items.length; i++) {
-      if (byteLength(items.slice(0, i + 1)) > maxOutputBytes) break;
-      kept = i + 1;
-    }
-    return {
-      ...result,
-      output: items.slice(0, kept) as T,
-      truncation: marker("entries", items.length - kept, CONTINUATION_HINT)
-    };
-  }
-
-  // A provider cursor points past its ORIGINAL page, not the shortened
-  // prefix. Never return that cursor after cutting items, which would skip
-  // omitted entries. Retry the same input cursor with a smaller page size.
-  if (
-    result.output !== null &&
-    typeof result.output === "object" &&
-    Array.isArray((result.output as Record<string, unknown>).items)
-  ) {
-    const obj = result.output as Record<string, unknown>;
-    const items = obj.items as unknown[];
-    let kept = 0;
-    for (let i = 0; i < items.length; i++) {
-      const candidate = { ...obj, items: items.slice(0, i + 1) };
-      if (byteLength(candidate) > maxOutputBytes) break;
-      kept = i + 1;
-    }
-    const { nextCursor: _nextCursor, ...page } = obj;
-    return {
-      ...result,
-      output: { ...page, items: items.slice(0, kept) } as T,
-      truncation: marker("entries", items.length - kept,
-        "This page was shortened and its nextCursor was removed to avoid skipping omitted entries. Re-invoke with the SAME input cursor and a smaller limit, then use that complete page's nextCursor. If no item fits, raise the output budget.")
-    };
-  }
-
-  // Generic object: emit a bounded serialized preview, clearly labeled.
-  const serialized = JSON.stringify(result.output) ?? "";
-  const { text, omitted } = truncateUtf8(serialized, maxOutputBytes);
-  return {
-    ...result,
-    output: { truncatedJsonPreview: text } as T,
-    truncation: marker("bytes", omitted, CONTINUATION_HINT)
+  const serialized = JSON.stringify(result.output) ?? "null";
+  const tokens = (text: string): number => {
+    const n = countTokens(text);
+    if (!Number.isSafeInteger(n) || n < 0) throw new Error("Invalid token counter result");
+    return n;
   };
+  const fits = (output: unknown): boolean => {
+    const text = JSON.stringify(output) ?? "null";
+    return Buffer.byteLength(text, "utf8") <= maxOutputBytes &&
+      (maxOutputTokens === undefined || tokens(text) <= maxOutputTokens);
+  };
+  if (fits(result.output)) return result;
+  // Every candidate is measured after JSON escaping and structural overhead.
+  // Binary search need not find the longest prefix for a non-monotonic host
+  // tokenizer, but the chosen candidate is always independently checked.
+  const prefix = <U>(length: number, candidate: (n: number) => U): U | undefined => {
+    if (!fits(candidate(0))) return undefined;
+    let lo = 0, hi = length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (fits(candidate(mid))) lo = mid; else hi = mid - 1;
+    }
+    const output = candidate(lo);
+    return fits(output) ? output : undefined;
+  };
+  let output: unknown;
+  let unit = "bytes";
+  let omitted = 0;
+  let continuation = CONTINUATION_HINT;
+  if (typeof result.output === "string") {
+    const chars = Array.from(result.output);
+    output = prefix(chars.length, n => chars.slice(0, n).join(""));
+  } else if (Array.isArray(result.output)) {
+    output = prefix(result.output.length, n => (result.output as unknown[]).slice(0, n));
+    unit = "entries";
+    omitted = result.output.length - ((output as unknown[] | undefined)?.length ?? 0);
+  } else if (result.output && typeof result.output === "object" && Array.isArray((result.output as Record<string,unknown>).items)) {
+    const {nextCursor: _cursor, ...page} = result.output as Record<string,unknown>;
+    const items = page.items as unknown[];
+    output = prefix(items.length, n => ({...page, items: items.slice(0,n)}));
+    unit = "entries";
+    omitted = items.length - ((output as {items:unknown[]} | undefined)?.items.length ?? 0);
+    continuation = "Page shortened; nextCursor removed. Re-invoke with the SAME input cursor and smaller limit, or raise the budget if no item fits.";
+  }
+  if (output === undefined) {
+    const chars = Array.from(serialized);
+    output = prefix(chars.length, n => ({truncatedJsonPreview: chars.slice(0,n).join("")}));
+    unit = "bytes";
+  }
+  if (output === undefined) {
+    return {status:"error", tool:result.tool, traceId:result.traceId, timing:result.timing,
+      error:{code:"resource_limit", message:"Output cannot fit the configured payload budget."}};
+  }
+  if (unit === "bytes") omitted = Math.max(0, Buffer.byteLength(serialized,"utf8") - byteLength(output));
+  return {...result, output:output as T,
+    truncation:{truncated:true, unit, omitted, continuation}};
 }
 
 /** Rough token estimate: 4 chars per token (PRD 8.6 context footprint). */

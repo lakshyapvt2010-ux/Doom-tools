@@ -28,13 +28,13 @@ This is a P0 prototype for review, aligned to the supplied PRD v0.2 dated Novemb
 
 ## Section-20 product gate remains open
 
-No competitor/overlap review or developer interviews were performed in this improvement pass. The required 5-10 primary-persona developer conversations, a dated competitive review and an evidence-backed wedge decision remain outstanding. No outreach was undertaken. The runtime-first positioning and choice of Vercel as the first framework adapter remain provisional product choices.
+The dated desk competitive review is now in docs/competitive-review.md. The required 5-10 primary-persona developer conversations and an evidence-backed wedge decision remain outstanding. No outreach was undertaken. The runtime-first positioning and choice of Vercel as the first framework adapter remain provisional product choices.
 
 ## Remaining requirements and limits
 
 - Five examples ship: coding-agent wiring, read-only repository assistant, read-only data assistant (sqlite.query), a local no-provider RAG example (custom keyword-retrieval tool + filesystem.read; lexical, no embeddings) and a headless browser agent example over a bundled loopback page. PRD section 17 lists these examples.
-- Output shaping has a toolkit payload byte budget and tool-specific pagination/limits, not model-specific output token accounting or general per-tool runtime budget overrides. Envelope, JSON escaping and structural overhead can exceed the nominal content cap; strict final-wire byte accounting remains open. Token footprints of definitions are approximate.
-- The MCP integration tests use an in-memory transport; stdio is the shipped launch transport. Streamable HTTP and outbound MCP client integration are P1 work.
+- Output shaping now has toolkit/per-tool successful-payload byte and optional token budgets. JSON escaping and payload structure count against the cap. Host tokenizers are supported; the default estimator is approximate. Full envelope, errors and adapter formatting remain outside the cap; strict final-wire budgeting stays open. See docs/output-budgets.md.
+- MCP server transports include stdio and Streamable HTTP; outbound MCP client tests cover both. The transport changes after 4e3ac25 await the next CI run.
 - No named desktop MCP client or hosted model provider was exercised. The SDK fixture is not evidence of provider behavior or autonomous agent quality.
 - Shell is trusted-host only. Cancellation and timeout stop waiting and signal cooperative tools; arbitrary host-side work can continue. There is no container/OS isolation backend.
 - Git is still a host binary. Repository configuration, filter drivers, global configuration and native Git behavior are not a sandbox. Use trusted repositories only. Disabling hooks/signing is intentional and may differ from an interactive Git workflow.
@@ -45,7 +45,7 @@ No competitor/overlap review or developer interviews were performed in this impr
 - macOS is in CI configuration, but was not locally tested in this Linux verification pass. Check the actual workflow result before calling the cross-platform matrix green.
 - Package names, licensing, publication, provenance and the release/support policy remain open product decisions. Packages remain `UNLICENSED` and were not published or deployed.
 
-## Final verification count
+## Earlier verification count (historical checkpoint)
 
 Final source verification: **127 tests passed, 0 failed, 0 cancelled, 0 skipped on each of Linux Node 22.23.5, 24.22.3 and 26.13.1**. This is 26 more tests than the preserved 101-test baseline. The test package contains 22 adversarial/integration cases, including its original 16 cases.
 
@@ -141,3 +141,16 @@ It shares fetch's connect-time DNS checks, response caps and redirect refusal.
 Five tests use a local server; no external mutations or credentials. No built-in
 authentication, proxy, cookies, multipart or binary-response support. Secrets in
 custom payloads are the host's responsibility, not a claimed scanner guarantee.
+
+## Per-tool/token output budgets and serialized-payload accounting
+
+PRD section 8.4: optional toolkit/per-tool token caps and per-tool byte caps now
+narrow the toolkit policy. Host tokenizers are supported, with the existing
+four-character estimate as the explicitly approximate fallback. JSON-serialized
+successful payloads count escape expansion and structural overhead; prefixes
+are verified after shaping. Tiny impossible budgets return resource_limit.
+Five new tests cover escaping/preview overhead, host token counting, impossible
+budgets, per-tool narrowing through selection, and invalid configuration. Two
+older assertions changed to reflect JSON quote overhead rather than raw text.
+Full envelope/errors/warnings/adapter wire overhead remain outside payload caps;
+strict final-wire budgeting is still open. See docs/output-budgets.md.

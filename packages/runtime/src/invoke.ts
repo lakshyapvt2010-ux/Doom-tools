@@ -95,7 +95,11 @@ export async function invokeTool(
     let result: ToolResult;
     try {
       if (!isToolResult(raw)) throw new Error("invalid result");
-      result = shapeResult(state.redactor.redactValue({ ...raw, tool: toolRef, traceId, timing: { startedAt, durationMs } }), state.policy.maxOutputBytes);
+      const localBudget = state.policy.perToolOutputBudgets[name];
+      const byteBudget = Math.min(state.policy.maxOutputBytes, localBudget?.maxOutputBytes ?? Infinity);
+      const tokenCap = Math.min(state.policy.maxOutputTokens ?? Infinity, localBudget?.maxOutputTokens ?? Infinity);
+      result = shapeResult(state.redactor.redactValue({ ...raw, tool: toolRef, traceId, timing: { startedAt, durationMs } }), byteBudget,
+        Number.isFinite(tokenCap) ? tokenCap : undefined, state.countOutputTokens);
     } catch {
       result = failure(toolRef, { code: "execution_error", message: "Tool returned an invalid or non-serializable result." }, { traceId, timing: { startedAt, durationMs } });
     }
