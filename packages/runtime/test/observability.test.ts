@@ -111,9 +111,6 @@ test("cancelled approval is removed; late allow cannot execute or become remembe
   assert.equal(again.status === "error" && again.error.code, "approval_required");
 });
 
-test("malformed registered schema returns an envelope and complete trace", async (t) => {
-  const toolkit = setup(t, [{ ...echo, inputSchema: { type: "not-a-type" } } as ToolDefinition]);
-  const result = await toolkit.invoke(echo.name, {});
-  assert.equal(result.status === "error" && result.error.code, "validation");
-  assert.equal(toolkit.traceRecords().length, 1);
+test("malformed schemas fail during registration before any invocation", (t) => {
+  assert.throws(() => setup(t, [{ ...echo, inputSchema: { type: "not-a-type" } } as ToolDefinition]), /schema/);
 });

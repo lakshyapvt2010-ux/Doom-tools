@@ -54,3 +54,15 @@ unknown rather than pretending to infer them. Runtime JSON Schema validation is
 still required; TypeScript types are not an authorization or validation boundary.
 Explicit input/output generics remain supported. Exported `SchemaInput<S>` can
 also be used in host code.
+
+### Registration validation and versions
+
+The runtime rejects malformed metadata and invalid or unsupported input/output
+schemas before inserting a tool. It compiles JSON Schema draft-07 with Ajv; it
+does not load remote references. Tool authors should use SemVer versions.
+Latest-version resolution follows SemVer precedence, including prereleases and
+ignoring build metadata. Imported tools may retain opaque version identifiers
+(such as `mcp-remote`); those sort lexically below SemVer versions and remain
+resolvable by exact identifier. The stricter lowercase naming rule in
+`defineTool` is an authoring convention; imported MCP identifiers may include
+uppercase letters and hyphens.

@@ -5,7 +5,7 @@
  * Maps to PRD sections 8.3 (contract), 8.4 (result/error model) and 11
  * (custom tool SDK). Validation, policy, approvals, selection, isolation,
  * tracing and audit live in @agentic-tools/runtime / @agentic-tools/security
- * (not yet built; gated by the PRD section 20 review).
+ * packages.
  */
 
 export type {
