@@ -12,7 +12,7 @@
 | not_found | File/directory/repo missing | Check the path relative to the workspace root. |
 | conflict | Ambiguous edit target | Make `find` unique or pass `all: true`. |
 | provider_error | Reserved for external provider failures (P1+ tools) | — |
-| execution_error | Unknown throw from tool code | The message is forwarded verbatim; fix the tool or catch and rethrow `ToolError`. |
+| execution_error | Unknown throw from tool code | Arbitrary exception text is suppressed. Fix the tool or throw a deliberately safe `ToolError`; never forward provider secrets or stack traces. |
 
 ## Diagnostics
 

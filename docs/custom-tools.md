@@ -21,9 +21,9 @@ export const searchUsers = defineTool({
 ```
 
 - Return a plain value; it is wrapped in a success envelope. Throw to fail; unknown errors
-  become `execution_error` with the message forwarded **verbatim** (keep secrets and paths
-  out of thrown messages). `ToolError` is the intentional disclosure path: code and message
-  pass through exactly.
+  become `execution_error` with a generic message, not the arbitrary exception text,
+  stack or cause. `ToolError` is the intentional disclosure path: supply a safe code and
+  message, never raw provider diagnostics or secret values.
 - Return `success(...)`/`failure(...)` envelopes yourself when you need warnings, timing,
   metadata or an explicit truncation marker.
 - `ctx.services` contains only host-registered services your tool declared a capability
