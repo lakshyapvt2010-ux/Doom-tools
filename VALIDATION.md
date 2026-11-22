@@ -41,7 +41,7 @@ No competitor/overlap review or developer interviews were performed in this impr
 - Path checks retain time-of-check/time-of-use limits on a mutable host filesystem.
 - Best-effort secret redaction cannot stop transformed, encoded or split secrets. Avoid placing secrets in tool-accessible resources.
 - Optional audit sinks are best-effort: a failure adds a result warning and does not erase the in-memory stream. Durable/fail-closed external audit delivery is not implemented.
-- Trace retention is capped at 1,000 records and metrics at 1,024 series. The in-memory audit stream has no retention limit yet; hosts should rotate/recreate long-lived toolkits or add a managed sink.
+- Trace retention is capped at 1,000 records, metrics at 1,024 series and the in-memory audit stream at 10,000 events (oldest dropped, count exposed on the sink). Hosts needing a full record add a durable sink.
 - macOS is in CI configuration, but was not locally tested in this Linux verification pass. Check the actual workflow result before calling the cross-platform matrix green.
 - Package names, licensing, publication, provenance and the release/support policy remain open product decisions. Packages remain `UNLICENSED` and were not published or deployed.
 

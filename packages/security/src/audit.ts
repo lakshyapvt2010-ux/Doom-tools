@@ -37,14 +37,31 @@ export interface AuditSink {
   record(event: AuditEvent): void;
 }
 
-export function memoryAuditSink(into?: AuditEvent[]): AuditSink & { events: AuditEvent[] } {
+export const DEFAULT_AUDIT_MEMORY_LIMIT = 10_000;
+
+/**
+ * Bounded in-memory sink. When the limit is reached the oldest events are
+ * dropped and `dropped` counts them, so a long-lived toolkit cannot grow
+ * without bound. Hosts needing a full record add a durable sink (FR-015).
+ */
+export function memoryAuditSink(
+  into?: AuditEvent[],
+  limit = DEFAULT_AUDIT_MEMORY_LIMIT
+): AuditSink & { events: AuditEvent[]; dropped: number } {
   const events = into ?? [];
-  return {
+  const sink = {
     events,
-    record(event) {
+    dropped: 0,
+    record(event: AuditEvent) {
       events.push(event);
+      if (events.length > limit) {
+        const excess = events.length - limit;
+        events.splice(0, excess);
+        sink.dropped += excess;
+      }
     }
   };
+  return sink;
 }
 
 /** Append-only JSON Lines sink. Payloads are redacted before writing. */
