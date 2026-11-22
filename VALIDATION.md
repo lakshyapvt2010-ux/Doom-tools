@@ -215,3 +215,13 @@ classified-input checks. Eight runtime tests cover allow/single-use, changed
 input/name/selection, denial/policy changes, cancellation, eviction/expiry,
 non-interactive fallback, real expired resume and changed classification.
 No external state, credentials or human decisions were used in these fixtures.
+
+
+## Native LangGraph interruption (local follow-up)
+
+Four real LangGraph StateGraph/ToolNode checkpoint tests cover redacted first-class
+approval requests, allow/resume once, refusal/malformed values, expiry and a forged
+ID. The bridge injects released interrupt and uses runtime tickets, rather than
+catching/weakening approvals. Tickets remain process-local and expire; graph
+checkpoint persistence does not make approval tickets durable. OpenAI's native
+SDK bridge is still open. See docs/langgraph-approvals.md.

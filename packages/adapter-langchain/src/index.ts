@@ -10,16 +10,14 @@
  * to a safe validation envelope without executing the runtime callback.
  * Runtime errors retain their stable code through ToolExecutionError.
  *
- * Approval parity (PRD 9.5, 10.2): LangChain's HITL lives in LangGraph
- * interrupts, outside the tool call, so approval-gated calls surface the
- * runtime's approval_required error as a thrown ToolExecutionError carrying
- * the stable code and resumable request ID. The adapter never skips or
- * weakens approval. Successful outputs are returned as JSON strings, the
- * shape LangChain tool results expect.
+ * Approval parity (PRD 9.5, 10.2): optional LangGraph interrupt mapping uses
+ * runtime-owned, single-use deferred tickets. Without it, approval failures
+ * retain their stable code and host approvers remain supported. The adapter
+ * never skips runtime policy. Successful outputs are JSON strings.
  */
 
 import { DynamicStructuredTool, ToolInputParsingException } from "@langchain/core/tools";
-import { failure, type JSONSchema, type ToolResult } from "@agentic-tools/core";
+import { failure, toFailure, type JSONSchema, type ToolResult } from "@agentic-tools/core";
 import type { Toolkit } from "@agentic-tools/runtime";
 
 /** Error thrown for failed tool calls; carries the stable error code. */
@@ -38,7 +36,11 @@ export class ToolExecutionError extends Error {
   }
 }
 
+export type NativeApprovalRequest = ReturnType<Toolkit["listDeferredApprovals"]>[number];
 export interface ToLangChainOptions {
+  /** Pass LangGraph's interrupt. Resume with {requestId, outcome:"allow"|"deny"}.
+   * Process-local, single-use runtime tickets; use a checkpointer and thread ID. */
+  nativeApproval?: {interrupt: (request: NativeApprovalRequest) => unknown};
   /** Map canonical names to provider-safe keys, e.g. dots to underscores.
    * Collisions fail before any tools are exposed. Runtime identity is unchanged. */
   nameForTool?: (canonicalName: string) => string;
@@ -67,7 +69,29 @@ export function toLangChain(
       description: tool.description,
       schema: tool.inputSchema as JSONSchema as never,
       func: async (args: unknown, _runManager?: unknown, config?: { signal?: AbortSignal }) => {
-        const result = await toolkit.invoke(tool.name, args, { signal: config?.signal });
+        let result = await toolkit.invoke(tool.name, args, {
+          signal: config?.signal, deferApproval: !!options.nativeApproval
+        });
+        if (options.nativeApproval && result.status === "error" && result.error.code === "approval_required") {
+          const requestId = result.error.details?.approvalRequestId;
+          const request = toolkit.listDeferredApprovals().find(r => r.id === requestId);
+          if (request) {
+            // GraphInterrupt must escape the adapter untouched. On replay,
+            // interrupt returns the trusted host's resume value, not model input.
+            const response = options.nativeApproval.interrupt(request) as {requestId?: unknown; outcome?: unknown} | null;
+            const valid = response && typeof response.requestId === "string" &&
+              (response.outcome === "allow" || response.outcome === "deny");
+            const resumedId = response && typeof response.requestId === "string" ? response.requestId : request.id;
+            if (resumedId !== request.id) toolkit.discardDeferredApproval(request.id);
+            try {
+              result = await toolkit.resumeApproval(resumedId,
+                {outcome: valid ? response.outcome as "allow" | "deny" : "deny"},
+                {name: tool.name, input: args, signal: config?.signal});
+            } catch (error) {
+              result = toFailure({name: tool.name, version: tool.version}, error);
+            }
+          }
+        }
         if (options.returnEnvelope || result.truncation) return JSON.stringify(result);
         if (result.status === "success") return JSON.stringify(result.output);
         throw new ToolExecutionError(tool.name, result);

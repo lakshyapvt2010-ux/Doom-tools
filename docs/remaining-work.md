@@ -20,9 +20,9 @@ a roadmap, not an instruction to build every integration it lists.
   mapped-IPv6 destination handling is fixed. A DNS-rebinding window remains
   between validation and Chrome connecting. Private-network isolation is not
   guaranteed. A real egress boundary would need a separately verified design.
-- Framework approval bridges: runtime approvals are enforced and failures keep
-  stable codes. There is no native LangGraph/OpenAI interruption-resume bridge.
-  Host approvers are required for approved execution.
+- Native LangGraph interrupt/resume now uses runtime-owned, expiring single-use
+  tickets. A native OpenAI Agents interruption bridge remains unimplemented.
+  Ticket persistence across process restart is not provided.
 
 ## Validation and release gates
 
