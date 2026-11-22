@@ -21,6 +21,7 @@ Source: the product owner's supplied PRD v0.2, prepared November 9, 2026. The ap
 | Section 13 row 5; sections 9.1, 9.2 | Policy-gated HTTP fetch with host allowlist, private-address refusal, bounded untrusted output | `packages/web/test/web.test.ts` (8 tests) |
 | Section 16; FR-019; section 8.6 | Token-footprint budget gate; git default set made statically read-only (`git.branches`) | `packages/adversarial/test/footprint.test.ts`, `packages/git/test/git.test.ts` |
 | Section 13 (SQLite read, P1) | Read-only confined SQLite query with explicit grant | `packages/sqlite/test/sqlite.test.ts` (8 tests) |
+| Section 13 (PostgreSQL read, P1) | Read-only host-configured PostgreSQL query with explicit grant, server-side read-only session | `packages/postgres/test/postgres.test.ts` (3 tests, real throwaway cluster) |
 | Section 10.1 (MCP client transports, P1) | stdio spawn and Streamable HTTP connect with untrusted registration | `packages/mcp-client/test/connect.test.ts` (6 tests) |
 | Section 10.1, 14.2 (Streamable HTTP, P1) | Loopback-default HTTP transport, Origin/Host checks, bearer token, per-session servers | `packages/adapter-mcp/test/http.test.ts` (6 tests) |
 | Section 20 (competitive review) | Dated landscape review with sources; interviews and go/no-go still open | docs/competitive-review.md |

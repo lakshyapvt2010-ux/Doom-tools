@@ -15,6 +15,8 @@ Per-tool platform matrix (PRD sections 14 and 22). "CI" means the workflow runs 
 | git.* | tested locally and CI | CI | not supported at P0 | Needs a host `git` binary. Not a sandbox. |
 | web.fetch | tested locally and CI | CI | untested | Uses `node:http`/`node:https`; no proxy support. |
 | sqlite.query | tested locally and CI | CI | untested | Needs `node:sqlite` (Node 22.5+ with no flag in the tested versions; experimental). |
+| postgres.query | tested locally | unverified until next CI run | untested | Needs a reachable PostgreSQL server; tests need `initdb`/`pg_ctl` binaries (skip otherwise). GitHub ubuntu runners ship them; macOS runners may not, so tests may skip there. |
+| browser.* | tested locally | unverified until next CI run | untested | Needs a Chrome binary. Per-request network interception mitigates but does not close DNS rebinding; private-network isolation is not guaranteed. |
 | bash.execute (trusted host) | tested locally and CI | CI | unsupported | Spawns `bash`. No containment on any platform. |
 | Container or OS isolation backend | not implemented | not implemented | not implemented | Requesting one must fail closed once a backend exists. |
 
