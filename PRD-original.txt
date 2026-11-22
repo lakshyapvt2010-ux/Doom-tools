@@ -1,0 +1,3018 @@
+Agentic Tools — Product Requirements Document
+Working product name: Agentic Tools
+Document version: 0.2
+Status: Draft for product and technical review (revised after first review pass)
+Prepared: 9 November 2026
+Product type: TypeScript-first, modular developer SDK and execution runtime
+Product thesis: Build tools once, execute them under consistent security controls, and expose
+them to any supported agent framework or MCP-compatible environment.
+
+Revision notes (v0.1 → v0.2)
+Changes made after the first review pass. Items marked proposed are recommendations that
+need team sign-off.
+Differentiation wedge made explicit. The product is positioned as a policy-aware
+execution runtime, not a tool-translation layer. The MCP server moves to P0 as the primary
+distribution surface, and the competitive review becomes a go/no-go gate (sections 2.4, 10,
+20).
+Tool selection. Exposure is controlled at package, operation, run and MCP-server level,
+enforced by the runtime, with minimal read-only defaults and context-footprint reporting
+(section 8.6, FR-019).
+Tool contract tightened. Per-invocation risk classification, one result envelope, a single
+source of truth for the workspace root, service access tied to granted capabilities, and JSON
+Schema as canonical format (proposed) (sections 7.1, 8.3, 11).
+Shell scope corrected. P0 Bash is trusted-host only, "restricted shell" no longer implies
+containment, a container sandbox moves from P2 to P1 (proposed), and macOS/Linux come
+first (sections 9, 14).
+Approval flow specified as a runtime-owned feature that works across adapters and MCP,
+including non-interactive behavior (section 9.5, FR-006).
+Claims softened to match reality: secret redaction is best-effort and prompt injection is
+mitigated, not solved (section 9.1).
+Scope discipline: one primary MVP persona, a prototype pass/fail gate, and the tool
+catalogue moved to Appendix A.
+
+1. Executive summary
+Agentic Tools is a modular, TypeScript-first toolkit for developers building AI agents and agentic
+applications. It provides reusable tools (for example, Bash, filesystem, Git, web, browser and
+database operations), a unified tool contract, a policy-aware execution runtime, and adapters that
+expose the same tool implementations to different agent frameworks and MCP environments.
+The product addresses fragmented tool implementation: developers repeatedly build or adapt the
+same capabilities, wire different schema formats, handle execution errors, and independently
+implement permissions, sandboxing, audit logs and resource limits. Agentic Tools aims to make
+those foundations reusable and safer by default.
+The tool catalogue (Appendix A) is intentionally broad. It represents the potential ecosystem, not
+a commitment to ship every integration in the first release. The recommended initial release is
+
+developer-first and local-runtime-first, with interfaces designed to support remote execution
+later. A hybrid local/remote product direction is a strategic hypothesis to validate.
+Differentiation wedge. MCP already standardizes how tools are exposed to clients, so Agentic
+Tools does not compete on protocol translation. Its differentiation is the policy-aware execution
+runtime (permissions, approvals, isolation options, redaction, audit and output limits) that sits
+beneath whichever protocol or framework exposes the tools. The MCP server is therefore the
+primary distribution surface and ships in P0; framework adapters are thin and follow. This is a
+hypothesis, to be validated by the go/no-go gate in section 20 before the P0 build is committed.
+
+2. Product vision and positioning
+2.1 Vision
+Become the reusable capability and execution layer developers reach for when giving AI agents
+access to tools, data, software projects and external systems.
+
+2.2 Positioning
+A framework-independent tool ecosystem with a consistent developer experience and a securityaware runtime. It is not an LLM, an agent orchestrator, or a replacement for LangGraph, Vercel AI
+SDK, OpenAI Agents SDK or MCP. It supplies capabilities those systems can invoke.
+
+2.3 Product promise
+Build once: implement a tool against one canonical contract.
+Connect anywhere: adapt tools to supported frameworks and MCP.
+Execute consistently: apply policies, limits, tracing and error handling centrally.
+Compose freely: install only the tool packages needed and define custom tools with the
+same SDK.
+
+2.4 Relationship to MCP and the differentiation wedge
+MCP standardizes how tools are described and exposed to clients, and many frameworks and
+clients already consume it. Agentic Tools therefore does not compete on protocol translation. The
+wedge is the layer a protocol leaves to implementers: a consistent execution runtime with
+capability-based permissions, approvals, isolation options, redaction, audit and output limits,
+applied identically whichever protocol or framework exposes the tools.
+Consequences for the product:
+1. The MCP server is the primary distribution surface and ships in P0; framework adapters are
+thin and follow.
+2. The runtime must be valuable on its own, including when wrapping tools it did not write
+(for example external MCP servers; see section 20).
+3. Built-in tools are justified where owning the implementation is necessary to enforce policy
+(filesystem, shell, Git). Commodity tools should integrate existing libraries.
+This wedge is a hypothesis. Section 20 defines the gate that must be passed before the P0 build is
+committed.
+
+3. Problem statement
+Developers building agents commonly need tools such as shell execution, file operations, Git,
+browser automation, search, HTTP, databases, memory and cloud services. These capabilities are
+scattered across libraries, framework-specific examples and custom code. Tool schemas, return
+formats and error semantics differ. Security controls are frequently implemented inconsistently
+or left to application code. Reusing a tool in a second framework can require rewriting its wrapper.
+This creates six main problems:
+1. Reimplementation: common tools are repeatedly written for individual projects.
+2. Fragmented interfaces: each framework/provider expects different schemas and
+invocation patterns.
+3. Unsafe execution: shell, filesystem, browser and cloud actions can cause real-world
+damage without isolation and permissions.
+4. Poor operability: timeouts, retries, tracing, audit logs and output limits are handled
+inconsistently.
+5. Integration overhead: developers must discover, configure and maintain many separate
+packages.
+6. Context and selection cost: exposing every available tool inflates the model's context and
+degrades tool selection. Developers need to expose only the tools and operations an agent
+actually needs, and to vary that per task.
+
+4. Goals and non-goals
+4.1 Goals
+Provide a canonical, strongly typed tool interface and stable execution contract.
+Ship a curated library of commonly used agent tools as modular packages.
+Make local execution safe by default through explicit permissions, bounded execution and
+isolation options.
+Support adapters for multiple agent frameworks without duplicating tool logic.
+Support MCP as both a client connection mechanism and a way to expose local tools.
+Make custom tool creation simple.
+Provide tracing, structured errors, metrics and audit events across tools.
+Keep provider credentials and secrets outside model-visible tool outputs and logs.
+Make the runtime extensible toward remote sandbox execution.
+Let developers expose only the tools and operations an agent needs, selectable per toolkit,
+per run and per MCP server, with the selection enforced by the runtime.
+Return model-friendly results: bounded, paginated and deterministically truncated outputs
+with explicit truncation markers.
+
+4.2 Non-goals for the initial release
+Building a new agent orchestration framework or LLM provider.
+Training, hosting or fine-tuning foundation models.
+Providing a hosted remote execution service at MVP launch.
+Shipping every tool in the catalogue at launch.
+
+Guaranteeing that arbitrary shell commands or third-party browser workflows are safe.
+Replacing dedicated vendor SDKs, database clients, cloud CLIs or framework-native tools.
+Making domain-specific decisions in regulated areas (finance, healthcare or legal).
+Windows support for execution tools (shell, process) in the initial release; macOS and Linux
+come first.
+Any claim of containment for host-mode shell execution; the initial release offers trustedhost shell only.
+
+5. Target users and jobs to be done
+Persona
+
+Needs
+
+Jobs to be done
+
+Individual AI
+developer
+
+Fast setup, predictable
+APIs, TypeScript types
+
+Add tools to a prototype without writing
+wrappers for every capability.
+
+Agent application
+engineer
+
+Stable contracts, tests,
+observability, adapters
+
+Ship an agent application across frameworks
+without duplicating implementations.
+
+Platform /
+infrastructure
+engineer
+
+Sandboxing, permissions,
+policy, auditability
+
+Give agents controlled access to execution
+environments and internal systems.
+
+AI/automation team
+
+Reusable integrations and
+custom tools
+
+Standardize tool behavior across multiple
+agents and projects.
+
+Open-source tool
+author
+
+Extension points, docs, test
+harness
+
+Publish a compatible tool package that works
+across supported runtimes.
+
+Primary persona for the MVP: the agent application engineer building coding or repository
+agents (read and edit files, search code, run commands, use Git). P0 scope, examples and
+documentation are optimized for this persona. The other personas are served by the same
+primitives but are not MVP design drivers. This choice is to be validated in the conversations
+required by the section 20 gate.
+
+6. Product principles
+1. Security is part of the execution contract. Tools do not bypass the runtime policy layer.
+2. Framework neutrality. The canonical tool implementation is independent of any LLM or
+agent framework.
+3. Least privilege. A tool receives only the resources and permissions it needs.
+4. Explicit side effects. Read-only, mutating, destructive and external actions are declared.
+5. Composable by default. Tools, adapters and runtime backends are independently
+installable.
+6. Observable by default. Every invocation has traceable identity, timing, status and policy
+outcome.
+7. Predictable outputs. Structured results and errors are preferred over unbounded text.
+
+8. Honest capability boundaries. A local process wrapper is not called a sandbox unless OSlevel isolation is actually used.
+9. Selective exposure. The model sees only the tools and operations explicitly selected for
+that toolkit, run or server. Installing a package does not expose everything in it, and hiding a
+schema is never the only control.
+
+7. Core product experience
+7.1 Desired developer experience
+Install the core and only the tool/adapters needed. Configure a workspace, permissions and
+runtime. Create a toolkit and export it to a supported framework or start an MCP server.
+bash
+
+pnpm add @agentic-tools/core @agentic-tools/runtime
+pnpm add @agentic-tools/bash @agentic-tools/filesystem @agentic-tools/git
+pnpm add @agentic-tools/adapter-mcp @agentic-tools/adapter-vercel
+
+ts
+
+import { createToolkit } from "@agentic-tools/core";
+import { bash } from "@agentic-tools/bash";
+import { filesystem } from "@agentic-tools/filesystem";
+import { git } from "@agentic-tools/git";
+const toolkit = createToolkit({
+// One source of truth for the boundary. Tools inherit it; a tool-level
+// root may only narrow it.
+workspace: "./workspace",
+// Operation-level selection. Omitting `only` applies the package's
+// read-only default set; write operations must be listed explicitly.
+tools: [
+filesystem({ only: ["read", "list", "search", "grep"] }),
+git({ only: ["status", "diff", "log"] }),
+bash({ mode: "trusted-host" }) // explicit opt-in; not a sandbox
+],
+runtime: { backend: "local" },
+policy: {
+filesystem: "workspace-only",
+network: "deny-by-default", // applies to runtime-mediated tools only
+approvals: { "process.execute": "always", "filesystem.write": "ask" }
+}
+});
+// Run-level narrowing, enforced by the runtime (read-only tools only)
+const planning = toolkit.select({ sideEffect: ["read"] });
+// Expose through MCP (primary) or a framework adapter
+await planning.serveMcp({ transport: "stdio" });
+const frameworkTools = toolkit.toVercelAI();
+
+The example is illustrative. Exact adapter method names and framework compatibility must be
+finalized against the versions supported at release. A toolkit must fail closed when a required
+policy or runtime capability is unavailable. API names are illustrative.
+Design notes for the example:
+One source of truth. Tools inherit the workspace root from policy rather than declaring
+their own; a tool-level root may only narrow it.
+Selection. only chooses operations within a package. The default set is minimal and readonly; write, external and destructive operations must be listed explicitly (section 8.6).
+
+Honest shell mode. Bash runs in trusted-host mode: host privileges, explicit opt-in,
+approval-gated by default. It is not a sandbox, and no "restricted" mode is offered in P0.
+Network policy scope. network governs runtime-mediated tools (HTTP, web fetch) and
+sandboxed backends. It cannot be enforced for host-mode shell, and the CLI must say so
+when such a configuration is loaded.
+
+7.2 User flows
+Install: add core, runtime, tool packages and optional adapter.
+Configure: define workspace roots, allowed operations, network policy, timeouts and
+resource caps.
+Compose: register built-in and custom tools.
+Select: choose which tools and operations are visible to the model, per toolkit, per run and
+per MCP server (section 8.6).
+Expose: convert tools into framework-specific definitions or run an MCP server.
+Execute: validate, authorize, approve if needed, execute in the selected backend, sanitize
+and return results.
+Inspect: view traces, structured errors, execution history and audit events.
+
+8. Architecture and system boundaries
+8.1 Logical architecture
+text
+
+Application / Agent Framework / MCP Client
+|
+Framework Adapters
+|
+Canonical Tool Registry
+|
+Policy & Tool Runtime
+/
+|
+\
+Validation Approval Observability
+\
+|
+/
+Execution Backend(s)
+/
+|
+\
+Local OS Container Remote Sandbox (future)
+|
+Tool Implementations
+Bash / Files / Git / Web / DB / ...
+
+8.2 Architectural layers
+Core: canonical interfaces, schemas, result types, tool metadata, registry and custom-tool
+SDK.
+Runtime: invocation lifecycle, context propagation, concurrency, cancellation, timeouts,
+output limits and backend abstraction.
+
+Security: policy evaluation, permissions, approvals, isolation, redaction and audit events.
+Tools: independently packaged capability implementations.
+Adapters: framework and protocol-specific schema/handler conversion.
+CLI: local development, configuration validation, diagnostics and MCP server launch.
+Remote backend (future): isolated remote execution with authenticated transport and
+lifecycle management.
+
+8.3 Canonical tool contract
+Each tool must declare a stable name, description, version, input schema, output contract, sideeffect classification, required capabilities, risk metadata and an execution function. JSON Schema
+is the canonical interchange format (proposed; confirm in the prototype). defineTool accepts
+either raw JSON Schema with inferred TypeScript types, or a Zod schema that is converted to
+JSON Schema at registration. Both produce the same ToolDefinition , and Zod is never the only
+wire format.
+ts
+
+type SideEffect = "read" | "write" | "external" | "destructive";
+type Risk = "low" | "medium" | "high";
+interface ToolDefinition<TInput, TOutput> {
+name: string;
+description: string;
+version: string;
+inputSchema: JSONSchema;
+outputSchema?: JSONSchema;
+sideEffect: SideEffect;
+// static upper bound for the tool
+capabilities: string[];
+// static set of capabilities the tool may
+request
+risk: Risk;
+// static default
+// Optional: refine side effect, risk and capabilities for one concrete
+input.
+classify?(input: TInput): InvocationClass;
+execute(input: TInput, context: ToolContext): Promise<ToolResult<TOutput>>;
+}
+interface InvocationClass {
+sideEffect: SideEffect;
+risk: Risk;
+capabilities: CapabilityRequest[]; // e.g. { name: "filesystem.write",
+path: "<resolved path>" }
+}
+
+Static metadata is an upper bound; classification refines it per call. Tools whose risk depends
+on their arguments (shell, SQL, HTTP, browser, cloud) must implement classify , which runs
+before policy evaluation. A classification may narrow but never exceed the tool's declared
+
+sideEffect and capabilities . If classification throws or is ambiguous, the runtime falls back
+
+to the static upper bound (fail closed). Classification is an input to policy, not a guarantee: the
+runtime cannot reliably infer the intent of an arbitrary shell command, so shell invocations
+classify as destructive/high unless they match an explicitly configured named command, and are
+therefore approval-gated by default.
+ToolContext should provide scoped capabilities, cancellation, trace identifiers, logger, policyapproved resource handles and deadline information. context.services contains only services
+that the host application registered ( createToolkit({ services }) ) and whose capabilities the
+tool declared and policy granted; accessing any other service fails with permission_denied .
+
+Tools must not receive unrestricted global access by default.
+
+Result envelope. The canonical execute returns a ToolResult . defineTool (section 11) lets
+authors return a plain value or throw; the SDK wraps the value in a success envelope or maps the
+error to the stable error model. Authors construct a ToolResult explicitly only when they need
+warnings or custom metadata.
+
+8.4 Standard result and error model
+Every execution returns a structured success or failure envelope with a correlation/trace ID, tool
+name/version, status, output, warnings, timing and sanitized metadata. Errors should have stable
+codes (validation, permission_denied, approval_required, timeout, cancelled, resource_limit,
+not_found, conflict, provider_error, execution_error) and safe messages. Raw secrets, stack traces
+and environment values must not be exposed to the model by default. Model-facing output
+shaping. Results carry a model-facing rendering alongside the structured payload. Tools and the
+runtime apply configurable byte and token budgets (per tool and per toolkit), pagination cursors
+for large listings and searches, and deterministic truncation that states what was cut and how to
+retrieve more. Truncation must never silently drop content, and oversized results may be
+summarized only when the summary is labeled as such.
+
+8.5 Execution lifecycle
+1. Discover the tool and validate its registered metadata.
+2. Check selection: reject calls to any tool not exposed to this toolkit, run or server
+( permission_denied ), even if the registry knows the name.
+3. Validate input against the canonical schema.
+4. Classify the invocation (static metadata, refined by the tool's classify hook where
+declared; fail closed to the static upper bound).
+5. Resolve caller identity, task scope and trace context.
+6. Evaluate policy and resource access against the classified invocation.
+7. Create an approval request where policy requires it and wait for a decision (section 9.5).
+8. Select an execution backend and provision scoped resources.
+9. Execute with timeout, cancellation and resource limits.
+10. Sanitize, shape and bound output.
+11. Emit trace, metrics and audit events.
+12. Return a structured result through the selected adapter.
+
+8.6 Tool selection and exposure
+Installing a package never exposes all of its operations to the model. Exposure is chosen at four
+levels, and the runtime enforces it. Method names are illustrative.
+Package level: developers install only the packages they need.
+Operation level: a package may contain many operations (for example Git status, diff and
+commit). Developers choose them with only / except . Each package documents a default
+operation set that is minimal and read-only. Write, external and destructive operations are
+never in the default set and must be listed explicitly.
+Run level: toolkit.select({...}) returns a derived toolkit narrowed by name, tag, side
+effect, risk or capability (for example read-only tools during a planning phase). A derived
+toolkit shares the parent's runtime, policy and audit stream, and can only narrow, never
+widen, what the parent allows.
+Server level: MCP server mode exposes only the selected set, and supports per-client
+selection where the transport provides client identity.
+Enforcement. Hiding a schema is not a security control. The runtime rejects a call to any tool that
+is not exposed to the current toolkit, run or server with permission_denied , including names the
+model guessed or hallucinated.
+Context footprint. The toolkit reports the approximate token cost of the definitions it exposes
+(for example toolkit.describeFootprint() and agentic-tools tools list --tokens ), and
+package defaults keep descriptions concise. Dynamic tool discovery (deferred loading or tool
+search, for frameworks and clients that support it) is a P2 item to evaluate once selection is in
+place.
+
+9. Security, privacy and safe execution
+Security is a core product requirement, not a later enhancement. Tool descriptions and model
+prompts are not security boundaries. All authorization must be enforced by runtime code outside
+the model.
+
+9.1 Required controls
+Workspace isolation: filesystem tools default to an explicitly configured root; canonicalize
+paths and prevent traversal/symlink escapes.
+Shell containment: command allowlists, argument filters and "restricted" modes are not a
+security boundary; subcommands, flags and wrapper programs that spawn other programs
+make them bypassable. P0 shell execution therefore runs in trusted-host mode only: explicit
+opt-in, approval-gated by default, with host privileges documented. Untrusted code requires
+an OS-level or container sandbox backend (P1).
+Network egress: deny by default for isolated execution; allow approved domains or network
+profiles when necessary. Egress policy applies to runtime-mediated tools and sandboxed
+backends. It cannot be enforced for host-mode shell, and the CLI and docs must say so.
+Credential isolation: expose references and operations, not raw secrets. Apply best-effort
+redaction of known secret values and patterns in stdout, stderr, traces and errors. Redaction
+reduces but cannot eliminate leakage (encoded, transformed or split values can evade it), so
+secrets should not be placed in tool-accessible environments in the first place.
+Approval gates: require human approval for destructive changes, external writes,
+deployments, payments, messages or privilege escalation according to policy.
+
+Resource limits: enforce time, CPU, memory, disk, process count, file size, request size and
+output limits where backend supports them.
+Auditability: record who/what invoked a tool, policy decision, approval, backend and
+outcome, without logging sensitive payloads by default.
+Supply-chain safety: pin/verify dependencies, publish provenance where practical, and
+document package permissions.
+Prompt-injection mitigation: treat web pages, files, tool outputs and MCP server responses
+as untrusted data, not instructions to override policies. A runtime cannot solve prompt
+injection, but it limits the blast radius by enforcing policy outside the model, labeling
+untrusted content in results, and approval-gating sensitive actions. Taint-aware policy
+(tightening approvals after untrusted content enters the context) is a P2 research item.
+
+9.2 Permission model
+Permissions should be capability-based and scoped. Example capabilities: filesystem.read ,
+filesystem.write , process.execute , network.http , git.write , database.read ,
+database.mutate , browser.control , cloud.deploy . Policies can bind capabilities to paths,
+hosts, repositories, database schemas, accounts and time windows.
+
+9.3 Trust modes
+Trusted local (trusted-host): developer-controlled machine; commands run with host
+privileges and no containment. This is the only mode for shell execution in P0. It requires
+explicit opt-in and is approval-gated by default.
+Restricted local: the runtime mediates access and limits operations for tools whose
+operations it can fully mediate (filesystem, Git, HTTP). It does not apply to shell execution,
+and must clearly disclose what is and is not isolated.
+Sandboxed local: OS/container-backed isolation with declared guarantees.
+Remote sandbox (future): isolated worker with authenticated control plane, ephemeral
+credentials and cleanup guarantees.
+
+9.4 Sensitive actions
+Destructive database mutations, shell commands with broad side effects, file deletion outside
+disposable workspaces, cloud deployments, secret access, financial transactions, sending
+communications and production infrastructure changes must be denied or approval-gated by
+default. Policies may be stricter, never silently relaxed by the agent.
+
+9.5 Approval flow
+Approval is a cross-cutting runtime feature, not an adapter feature. It must work for interactive
+agents, non-interactive agents and MCP clients.
+First-class requests. An approval request is a runtime object with an ID, the tool, the
+classified invocation, the policy rule that triggered it, a redacted input preview and an
+expiry.
+Pluggable approvers. An approver interface supports an in-process callback, a CLI prompt,
+a webhook or queue for non-interactive and remote agents, and MCP elicitation where the
+client supports it.
+Pause and resume. The invocation suspends and resumes after a decision. A decision is
+bound to the exact classified input, so approving one command never approves another.
+
+Approvals expire, and any "approve always" is scoped narrowly and controlled by policy.
+Non-interactive default. If a call requires approval and no approver is available, it fails with
+approval_required . It is never auto-approved.
+Framework integration. Where a framework has native human-in-the-loop support, the
+adapter maps to it. Where it does not, the adapter returns approval_required with a
+resumable request ID. No adapter may skip or weaken approval.
+Validation. Prototype the approval flow end to end through MCP and one framework before
+the P0 scope is locked.
+
+10. Framework and protocol interoperability
+10.1 Initial adapters
+P0: MCP server exposure (primary distribution surface; stdio transport first) and one
+framework adapter, chosen on target-persona usage and API stability.
+P1: MCP client connections (external tools registered as untrusted), Streamable HTTP
+transport, and additional framework adapters among Vercel AI SDK, LangChain /
+LangGraph and OpenAI Agents SDK. The adapter layer translates schemas, tool-call
+arguments, streaming events, cancellation and errors. It must not reimplement tool
+behavior or weaken runtime policy. Compatibility is versioned and tested in CI against
+declared supported versions.
+
+10.2 Adapter acceptance criteria
+Same canonical tool can be invoked through each supported adapter.
+Input validation and runtime policy behave identically across adapters.
+Cancellation and timeouts propagate where framework APIs permit.
+Structured errors are converted without losing stable error codes.
+Streaming/partial output behavior is explicitly documented.
+No adapter can bypass approval, redaction or audit hooks.
+
+10.3 MCP
+Support MCP as both a server and a client. Server mode exposes registered tools and, where
+appropriate, resources and prompts. Client mode connects to configured external MCP servers.
+Server trust, authentication, transport, tool discovery and session lifecycle must be explicit.
+Remote MCP tool outputs remain untrusted and are subject to local policy.
+MCP clients differ in support for elicitation, tool annotations and structured output, so server
+mode must degrade safely: tools that require approval are not exposed to a client that cannot
+present an approval unless policy configures an out-of-band approver. Publish an MCP client
+compatibility matrix.
+
+11. Extensibility and custom tool SDK
+Developers must be able to define custom tools using a typed helper and register them with the
+same runtime. A custom tool receives a constrained ToolContext ; it does not automatically
+inherit every host permission.
+
+ts
+
+import { defineTool } from "@agentic-tools/core";
+export const searchUsers = defineTool({
+name: "search_users",
+description: "Search users in the application",
+inputSchema: {
+type: "object",
+properties: { query: { type: "string" } },
+required: ["query"],
+additionalProperties: false
+},
+sideEffect: "read",
+capabilities: ["database.read"],
+execute: async ({ query }, ctx) => {
+return ctx.services.database.users.search({ query });
+}
+});
+
+The SDK should provide schema validation, policy checks, tracing, structured errors, adapter
+compatibility and a local test harness automatically.
+defineTool wraps a returned plain value in a success ToolResult and maps thrown errors to
+
+the stable error model, so the example above needs no explicit envelope.
+ctx.services.database is available only if the host registered a database service through
+createToolkit({ services }) and policy granted database.read . Tools with argumentdependent risk add a classify function (section 8.3).
+
+12. Package and repository strategy
+Use a monorepo with independently versioned/published packages where dependency and
+release complexity justify it. The package names below are proposals; npm availability, trademark
+conflicts and naming conventions must be checked before publication.
+
+text
+
+@agentic-tools/
+core
+runtime
+security
+registry
+cli
+bash
+filesystem
+git
+code
+web
+browser
+database
+docker
+memory
+tasks
+search
+adapter-vercel
+adapter-langchain
+adapter-langgraph
+adapter-openai
+adapter-mcp
+
+Tool packages should declare platform support, required binaries/services, permissions, security
+posture, optional dependencies, side effects and tested versions. Avoid installing large provider
+SDKs when a user only needs a core tool.
+Package versus operation granularity. A package may contain many operations, each
+individually selectable (section 8.6), so package boundaries follow dependency and release
+boundaries, not individual tools. Each package declares a minimal, read-only default operation
+set and documents its token footprint. The starting set is core , runtime , security , cli ,
+adapter-mcp , filesystem , git , bash and one framework adapter; the rest of the list is
+roadmap.
+
+13. Tool catalogue and phasing
+The full inventory of tools and capabilities identified in discovery is in Appendix A. It is a
+roadmap and community extension map, not a delivery commitment. The table maps each
+category to its initial release phase (section 14).
+#
+
+Category
+
+Initial
+phase
+
+Notes
+
+1
+
+System & terminal
+
+P0
+
+Bash in trusted-host mode only; other shells, SSH
+and PTY later.
+
+#
+
+Category
+
+Initial
+phase
+
+Notes
+
+2
+
+Filesystem & file
+manipulation
+
+P0
+
+Core file operations; archive, PDF and document
+readers later.
+
+3
+
+Development & code
+intelligence
+
+P2
+
+Diff covered by filesystem and Git at P0.
+
+4
+
+Git & version control
+
+P0 / P2
+
+Local essentials at P0; hosted platforms at P2.
+
+5
+
+Web & internet
+
+P1 / P2
+
+HTTP, fetch and search at P1; browser automation
+at P2.
+
+6
+
+Database
+
+P1 / P2
+
+SQLite and PostgreSQL reads at P1; mutations and
+others later.
+
+7
+
+AI & LLM-specific
+
+P2
+
+8
+
+Agent orchestration &
+coordination
+
+Deferred
+
+9
+
+Memory & knowledge
+management
+
+P2
+
+Overlaps the orchestration non-goal; review
+before any commitment.
+
+10 Cloud & DevOps
+
+P2
+
+Approval-gated by default.
+
+11
+
+Browser, desktop & GUI
+automation
+
+P2 / P3
+
+Browser at P2; desktop and GUI at P3.
+
+12
+
+Communication &
+productivity
+
+P3
+
+Approval-gated by default.
+
+13 API & integration
+
+P1 / P2
+
+HTTP client at P1.
+
+14 Security & permissions
+
+P0
+
+Runtime-resident capabilities, not model-callable
+tools.
+
+15
+
+P0 / P1 / P2
+
+Tracing at P0, mock and replay at P1, evaluation at
+P2.
+
+Testing, debugging &
+observability
+
+16 Data processing & analytics
+
+P3
+
+17
+
+P3
+
+Media & content processing
+
+18 Domain-specific
+
+P3
+
+Community and extension packages.
+
+#
+
+Category
+
+19 MCP & external tool
+ecosystem
+
+Initial
+phase
+
+Notes
+
+P0 / P1
+
+MCP server at P0; client at P1.
+
+14. Prioritization and release plan
+Release planning is gated by the section 20 go/no-go review. If the review re-scopes the product,
+P0 changes accordingly.
+
+14.1 P0 — Foundation / MVP
+Canonical TypeScript tool contract, JSON Schema validation, per-invocation classification
+and typed custom-tool SDK (JSON Schema canonical, Zod helper).
+Local runtime, registry, invocation lifecycle, cancellation and structured errors.
+Tool selection at package, operation, run and MCP-server level, enforced by the runtime,
+with minimal read-only package defaults.
+Workspace-scoped filesystem tools: read, list, search, glob, grep and diff in the default set;
+write and edit policy-gated.
+Bash/process execution in trusted-host mode only: explicit opt-in, approval-gated by
+default, timeouts and output limits, and no containment claims (proposed; alternatives in
+section 21).
+Git essentials (status, diff, log, branch, switch, add/reset, commit) with write operations
+policy-gated.
+Policy engine, capability permissions, approval flow (pluggable approvers, pause/resume,
+non-interactive deny), best-effort secret redaction and audit events.
+Model-facing output shaping: budgets, pagination and explicit truncation.
+Trace collection and CLI diagnostics, including platform capability detection and tool
+token-footprint reporting.
+MCP server (stdio transport) as the primary exposure surface.
+One framework adapter; a second in the same release only if test coverage and maintenance
+remain manageable.
+Adversarial security test suite and a quickstart that works from a clean install.
+Platforms: macOS and Linux.
+
+14.2 P1 — Interoperability, sandboxing and useful breadth
+Container sandbox backend (Docker) providing the sandboxed local trust mode for shell
+and code execution (proposed; pulled forward from P2).
+MCP client (external tools registered as untrusted) and Streamable HTTP transport for the
+MCP server.
+Additional framework adapters (Vercel AI SDK, LangChain/LangGraph, OpenAI Agents
+SDK).
+HTTP client, web fetch and pluggable web search provider.
+Tool mocking, response recording and deterministic replay for supported tool interactions.
+
+Database read operations for SQLite and PostgreSQL; mutations remain separately
+permissioned.
+Windows support for filesystem and Git tools.
+Documentation, examples and integration test matrix.
+
+14.3 P2 — Advanced runtime and tool ecosystem
+OS-native sandbox backends and Windows support for execution tools.
+Browser automation.
+Additional databases, cloud and DevOps integrations.
+Memory and task-management packages.
+LLM utilities (token counting, prompt management, structured output, model fallback, cost
+estimation).
+Test/evaluation and regression tooling.
+Dynamic tool discovery (deferred loading or tool search) and taint-aware policy research.
+
+14.4 P3 — Community ecosystem and remote execution
+Remote sandbox backend and worker lifecycle.
+Domain-specific packages and third-party integrations.
+Tool registry/discovery, signing/provenance and community publishing program.
+Advanced GUI, media, analytics, IoT and blockchain capabilities.
+
+15. Functional requirements
+ID
+
+Requirement
+
+Priority Acceptance criteria
+
+FR001
+
+Canonical tool
+definition
+
+P0
+
+Every tool declares name, description, version, input schema, side
+effect, capabilities, risk and execute handler.
+
+FR002
+
+Schema
+validation
+
+P0
+
+Invalid input is rejected before tool execution with a stable
+validation error.
+
+FR003
+
+Tool registry
+
+P0
+
+Tools can be registered, discovered, versioned and resolved
+without framework-specific code.
+
+FR004
+
+Execution
+context
+
+P0
+
+Each invocation receives scoped context, trace ID, cancellation
+signal and deadline.
+
+FR005
+
+Policy
+enforcement
+
+P0
+
+Every invocation is authorized by the runtime before side effects
+occur. Policy evaluates the classified invocation (FR-020), not only
+static tool metadata.
+
+ID
+
+Requirement
+
+Priority Acceptance criteria
+
+FR006
+
+Human
+approval
+
+P0
+
+Policy can pause high-risk operations and resume only after an
+approval decision. Approval requests are runtime objects bound to
+the exact classified input, they expire, and they route through
+pluggable approvers (callback, CLI, webhook/queue, MCP
+elicitation where supported). With no approver available the call
+fails with approval_required ; it is never auto-approved.
+
+FR007
+
+Workspace
+restrictions
+
+P0
+
+Filesystem operations cannot escape configured roots, including
+via traversal and symlinks.
+
+FR008
+
+Bounded
+execution
+
+P0
+
+Timeout and output-size limits are enforced; cancellation is
+propagated where supported.
+
+FR009
+
+Structured
+results/errors
+
+P0
+
+All tools return a consistent result envelope and stable error codes.
+
+FR010
+
+Audit events
+
+P0
+
+Invocation, policy, approval and outcome events can be correlated
+without exposing secrets.
+
+FR011
+
+Adapter parity
+
+P1
+
+The same tool implementation behaves consistently across
+supported adapters.
+
+FR012
+
+MCP server
+
+P0
+
+Selected tools can be exposed through an MCP server (stdio at P0)
+with runtime policy, approval and redaction applied. Clients that
+cannot present approvals never receive approval-gated tools
+unless policy provides an out-of-band approver.
+
+FR013
+
+Custom tool
+SDK
+
+P0
+
+A developer can define, validate, test and register a custom tool
+using documented helpers.
+
+FR014
+
+Mock/replay
+
+P1
+
+Developers can mock tool responses and replay supported
+recorded interactions.
+
+FR015
+
+Observability
+
+P0
+
+Traces include tool, duration, status and policy metadata; payload
+capture is configurable and redacted.
+
+FR016
+
+CLI
+
+P0
+
+CLI validates configuration, lists tools (with token footprint),
+checks runtime prerequisites and starts MCP server mode.
+
+FR017
+
+Modular
+installation
+
+P0
+
+A developer can install core and selected tool packages without all
+optional dependencies.
+
+ID
+
+Requirement
+
+Priority Acceptance criteria
+
+FR018
+
+Platform
+capability
+detection
+
+P0
+
+P0 supports macOS and Linux. Unsupported OS/runtime
+capabilities fail clearly before execution; no false sandbox claims,
+and the CLI states which guarantees the active mode does and
+does not provide.
+
+FR019
+
+Tool selection
+
+P0
+
+Tools can be selected at package, operation and run level and per
+MCP server. Package defaults are minimal and read-only. Calls to
+non-selected tools are rejected by the runtime with
+permission_denied in every adapter. Selection can narrow but
+never widen policy.
+
+FR020
+
+Per-invocation
+classification
+
+P0
+
+Tools with argument-dependent risk implement classify .
+Classification runs before policy, cannot exceed declared bounds,
+and falls back to the static upper bound on failure. Shell
+invocations classify as destructive/high unless they match a
+configured named command.
+
+FR021
+
+MCP client
+
+P1
+
+External MCP servers can be connected and their tools registered
+as untrusted tools, subject to local policy, selection and approval.
+
+FR022
+
+Output
+shaping
+
+P0
+
+Results have size and token budgets, deterministic truncation
+with explicit markers, and pagination cursors. Truncation never
+silently drops content.
+
+FR023
+
+Adversarial
+test suite
+
+P0
+
+A published suite covers path traversal, symlink escape, injection
+attempts against runtime-mediated tools, prompt-injection
+fixtures that try to alter policy, secret canaries across
+stdout/stderr/errors/traces, approval-bypass attempts through
+each adapter, and cancellation cleanup. It runs in CI and gates
+releases.
+
+16. Non-functional requirements
+Security: fail closed on missing policy; least privilege; no model-controlled policy overrides;
+documented trust boundaries.
+Reliability: predictable errors, bounded retries, cancellation and cleanup of child
+processes/resources.
+Performance: low overhead for schema validation and dispatch; tool execution dominates
+end-to-end latency for most integrations. Establish measured budgets after benchmark
+baselines.
+Portability: support current maintained Node.js LTS releases; macOS and Linux at P0, with
+Windows phased in per tool (section 14); publish a per-tool platform matrix.
+
+Context efficiency: each package documents the token footprint of its default tool set;
+descriptions stay concise, and footprint regressions are tracked in CI.
+Maintainability: strict TypeScript, unit/integration tests, semver, dependency review and
+release automation.
+Observability: structured logs, traces and metrics with configurable payload capture and
+retention.
+Usability: first successful tool invocation should be achievable from a small documented
+example; errors should explain how to fix configuration safely.
+Accessibility: CLI output should be readable without color; docs and generated reports
+should use semantic structure.
+Privacy: collect no telemetry by default in the open-source local runtime; any optional
+telemetry must be opt-in and documented.
+
+17. Developer documentation and support requirements
+Quickstart for a plain TypeScript project.
+Framework-specific guides for each supported adapter.
+MCP server and client setup guide.
+Tool reference pages with parameters, output schemas, required permissions, side effects
+and platform support.
+Security guide explaining trusted-host, restricted and sandboxed modes and their
+guarantees.
+Guide to choosing and narrowing tools (package, operation, run and MCP-server level) and
+managing context footprint.
+Approval integration guide: approvers, non-interactive behavior and per-framework and
+per-MCP-client support.
+Custom tool authoring guide and package template.
+Troubleshooting guide and compatibility matrix.
+Examples: coding agent, repository assistant, RAG agent, database assistant and browser
+agent.
+
+18. Success metrics
+Adoption
+Weekly active projects using the packages.
+Number of installs/downloads by package (interpreted cautiously due to CI/reinstall noise).
+Number of community-contributed tools and adapters.
+Number of example projects successfully integrated.
+
+Developer experience
+Time from install to first successful tool invocation.
+Time required to add a tool to a second supported framework.
+Documentation task completion and support issue resolution.
+Percentage of common errors with actionable diagnostics.
+Token footprint of each package's default tool set, and the share of exposed tools actually
+used per run.
+
+Runtime quality and safety
+Percentage of invocations producing complete traces.
+Policy bypass and sandbox escape findings (target: zero known unresolved critical issues).
+Timeout/cancellation cleanup success rate.
+Secret leakage tests passing across stdout, stderr, errors and traces.
+Compatibility test pass rate across declared OS/runtime/framework versions.
+
+Ecosystem health
+Number of maintained tool packages with release and test coverage.
+Time to add a new adapter or tool using the canonical interface.
+Breaking changes per release and upgrade friction.
+
+Prototype gate (before alpha)
+Proposed pass/fail bar, to be confirmed by the team:
+A reference coding agent, running through MCP and the first framework adapter,
+completes a defined repository task set (read, search, edit, run tests, commit) end to end.
+The adversarial suite (FR-023) shows zero policy bypasses.
+The approval flow works end to end through MCP and one framework, including noninteractive denial.
+The same tool behaves identically through MCP and the framework adapter (contract
+tests).
+External developers matching the primary persona reach a first successful tool invocation
+from a clean install without help.
+Adoption targets should be set after a baseline from the first alpha; do not invent adoption targets
+before distribution and audience are validated.
+
+19. Risks and mitigations
+Risk
+
+Impact
+
+Mitigation
+
+Scope explosion
+
+A huge catalogue delays a
+usable release.
+
+Ship a narrow P0; maintain the catalogue as a
+roadmap and community extension map.
+
+Unsafe local
+execution
+
+Agent can damage files, leak
+secrets or run malicious
+code.
+
+Capability permissions, explicit trust modes,
+OS/container isolation, approvals, limits and
+adversarial tests.
+
+Framework churn
+
+Adapters break as SDK APIs
+change.
+
+Versioned adapters, compatibility matrix, CI
+contract tests and narrow peer dependencies.
+
+Overlapping
+ecosystem tools
+
+Developers may prefer
+mature dedicated packages.
+
+Integrate existing libraries where appropriate;
+focus differentiation on unified contract, policy
+and adapters.
+
+False sandbox
+confidence
+
+Users assume a restricted
+wrapper is secure isolation.
+
+Precisely document guarantees; name modes
+honestly; fail closed when an isolation backend
+is requested but unavailable. P0 shell runs in
+trusted-host mode only, with no containment
+claims.
+
+Credential leakage
+
+Secrets enter model context
+or telemetry.
+
+Secret handles, output redaction, no raw
+credential return, canary tests and secure
+logging defaults.
+
+MCP trust
+boundary
+
+External servers return
+malicious or misleading
+data.
+
+Treat remote outputs as untrusted, require
+server configuration/approval, and enforce
+local policies.
+
+Package
+fragmentation
+
+Too many packages become
+difficult to version and
+support.
+
+Start with a small package set; split when
+dependency or release boundaries justify it.
+
+Cross-platform
+complexity
+
+Shell and sandbox semantics Per-tool platform support matrix, platform
+differ by OS.
+adapters and explicit unsupported behavior.
+macOS and Linux first, Windows phased.
+
+Commoditization
+by MCP
+
+The protocol layer is already
+standardized, so users may
+use MCP servers directly
+and see no reason to adopt
+this product.
+
+Position around the policy runtime, not
+translation. Complete the section 20 gate. Make
+the runtime useful when wrapping tools it did
+not write.
+
+Risk
+
+Impact
+
+Mitigation
+
+Context bloat and
+poor tool selection
+
+Large tool sets degrade
+model tool selection and
+inflate cost.
+
+Minimal read-only defaults, selection at four
+levels enforced by the runtime, footprint
+reporting, concise descriptions.
+
+Approval flow
+complexity
+
+Frameworks and MCP
+clients differ in human-inthe-loop support, so
+approvals could be bypassed
+or unusable.
+
+Runtime-owned approval objects, pluggable
+approvers, fail-closed non-interactive default,
+early end-to-end prototype, client
+compatibility matrix.
+
+20. Competitive landscape, differentiation wedge and go/no-go gate
+The space already includes framework-native tool sets, agent SDKs with built-in tools and
+permission systems, community and reference MCP servers (filesystem, Git, shell), browser
+automation projects, observability platforms, guardrail and policy layers, and sandbox or
+execution providers. The product should not compete by claiming the largest list of tools.
+Differentiation wedge (hypothesis). A policy-aware execution runtime (capability permissions,
+approvals, isolation options, redaction, audit and output shaping) applied consistently across
+protocols and frameworks, combined with:
+1. One canonical tool contract across MCP and frameworks.
+2. A consistent, policy-aware execution lifecycle.
+3. Modular, selectable built-in tools and an approachable custom-tool SDK.
+4. Tracing, replay and auditability integrated at the runtime layer.
+Questions the review must answer.
+1. Is there demand for a policy, approval and audit layer that is independent of any one agent
+framework or MCP server implementation, and which persona feels the need first?
+2. Would a policy-enforcing wrapper around tools the product did not write (for example
+external MCP servers) be a stronger, more differentiated product than reimplementing
+commodity tools? If so, the MCP client and policy proxy move earlier and the built-in
+catalogue shrinks.
+3. Which built-in tools are worth owning (those where owning the implementation is needed
+to enforce policy) versus integrating from mature libraries?
+Go/no-go gate before committing to the P0 build.
+A competitor and overlap review across the categories above, dated at the time of review.
+Conversations with 5–10 developers matching the primary persona (proposed number),
+focused on how they handle permissions, approvals and tool exposure today.
+A one-sentence wedge statement that survives both.
+Possible outcomes: proceed as scoped; re-scope toward a policy-runtime-first product that wraps
+existing tools; or stop. The outcome and its evidence are recorded in this document.
+
+21. Open product decisions
+1. Package naming: confirm npm scope, repository name and trademark availability.
+2. Runtime direction: recommended hybrid architecture, local-first initial release; validate
+demand for hosted remote execution.
+3. First framework adapter: MCP is the first adapter (P0). Choose the first framework adapter
+based on target-persona usage and API stability, then add further adapters with parity tests.
+4. Schema library: proposed: JSON Schema is canonical, with Zod as an authoring
+convenience (section 8.3). Confirm in the prototype, including type-inference ergonomics.
+5. Sandbox strategy: select platform-specific isolation backends and define exact guarantees
+per OS.
+6. Search provider: decide whether web search is an adapter interface only or ships with one
+default provider.
+7. Database support: choose the first supported database and read/write boundary.
+8. Telemetry: keep disabled by default; decide whether opt-in anonymous usage metrics are
+needed.
+9. Licensing: select a license compatible with intended adoption and contribution model.
+10. Support policy: define Node.js, OS and framework version support windows.
+11. P0 shell scope: proposed: trusted-host only and approval-gated, with a Docker sandbox
+backend in P1. Alternatives: pull a container backend into P0, or ship P0 without shell
+execution.
+12. Approval transport defaults: which approvers ship in P0 (callback and CLI proposed;
+webhook/queue and MCP elicitation where feasible) and how non-interactive agents are
+configured.
+13. Policy-proxy mode: whether the runtime should also wrap tools it did not write (for
+example external MCP servers) as a first-class product mode (section 20).
+14. Dynamic tool discovery: whether to support deferred loading or tool search after selection
+ships (P2).
+
+22. Launch readiness checklist
+Canonical contract and versioning policy published.
+Threat model and security documentation reviewed.
+Path traversal, symlink, shell injection, output leakage and cancellation tests pass.
+No secrets exposed in model outputs, logs or traces by default.
+Tool permission metadata and side effects documented.
+Framework adapter contract tests pass.
+MCP server/client trust behavior documented and tested.
+Quickstart and examples work from a clean install.
+Package provenance, license, dependency and release checks complete.
+Known limitations and unsupported platforms clearly disclosed.
+Competitive and demand gate (section 20) completed and its outcome recorded.
+Tool selection is enforced at runtime: calls to non-selected tools are rejected in every
+adapter and in MCP server mode.
+
+Approval flow tested end to end, including non-interactive denial and clients without
+approval support.
+Per-invocation classification tests pass, including the fail-closed fallback.
+Documentation makes no containment claim for host-mode shell; the macOS/Linux
+platform matrix is published.
+Default tool sets and their token footprints are documented.
+
+23. Glossary
+Term
+
+Meaning
+
+Tool
+
+A named, schema-defined capability an agent can invoke.
+
+Adapter
+
+A translation layer between the canonical contract and a framework/protocol.
+
+Runtime
+
+The service responsible for validation, authorization and execution lifecycle.
+
+Backend
+
+The environment where execution occurs (local, container or remote sandbox).
+
+Capability
+
+A specific permission such as filesystem read or network access.
+
+MCP
+
+Model Context Protocol, used to expose or consume tools and resources.
+
+Side effect
+
+A change to state or an external action caused by tool execution.
+
+Tool context
+
+Scoped execution metadata and approved services/resources passed to a tool.
+
+Selection
+
+The set of tools and operations exposed to the model for a toolkit, run or MCP
+server; enforced by the runtime.
+
+Classification
+
+Per-invocation refinement of a tool's side effect, risk and capabilities, evaluated
+before policy.
+
+Trusted-host
+mode
+
+Execution with host privileges and no containment; requires explicit opt-in.
+
+Approver
+
+A pluggable component that decides approval requests (callback, CLI,
+webhook/queue or MCP elicitation).
+
+Appendix A. Complete tool catalogue (roadmap inventory)
+The following catalogue includes every tool/capability identified during product discovery. The
+list is intentionally expansive. It is an inventory for ecosystem planning, not an MVP delivery
+commitment. Similar capabilities may be implemented by one shared package with multiple
+operations. Items marked as security or orchestration capabilities may live in the runtime rather
+than being exposed as model-callable tools.
+
+1. System & terminal tools
+Tools for controlled command execution and operating-system interaction.
+Tool / capability
+
+Description
+
+Bash / Shell
+
+Execute shell commands in a controlled process environment.
+
+Zsh
+
+Execute Zsh scripts and commands.
+
+PowerShell
+
+Execute PowerShell commands and scripts.
+
+Command runner
+
+Run named, predefined commands and scripts.
+
+Process manager
+
+Start, stop, inspect and signal child processes.
+
+Environment manager
+
+Read and manage explicitly permitted environment variables.
+
+Package manager
+
+Invoke npm, pnpm, yarn, pip, cargo and other package managers.
+
+System information
+
+Inspect OS, architecture, CPU, memory and runtime information.
+
+Disk manager
+
+Inspect disk space and usage.
+
+Service manager
+
+Inspect and manage supported system services.
+
+Background jobs
+
+Launch and monitor long-running jobs.
+
+Cron manager
+
+Create, inspect and manage scheduled jobs.
+
+SSH
+
+Execute commands on authorized remote hosts.
+
+SCP / SFTP
+
+Transfer files to and from authorized remote hosts.
+
+PTY
+
+Create interactive pseudo-terminal sessions.
+
+2. Filesystem & file manipulation tools
+Tools for reading, editing, searching and transforming local or mounted files.
+Tool / capability
+
+Description
+
+Read file
+
+Read a file with encoding, size and path controls.
+
+Write file
+
+Create or overwrite files.
+
+Edit file
+
+Apply targeted edits or patches to files.
+
+Append file
+
+Append content to an existing file.
+
+Tool / capability
+
+Description
+
+Delete file
+
+Remove files after policy checks.
+
+List directory
+
+List directory entries and metadata.
+
+Search files
+
+Find files by name, path or pattern.
+
+Glob
+
+Match paths using glob patterns.
+
+Grep
+
+Search file contents using text or regular expressions.
+
+File metadata
+
+Inspect size, permissions, timestamps and ownership where available.
+
+Move file
+
+Move files and directories.
+
+Copy file
+
+Copy files and directories.
+
+Rename file
+
+Rename files and directories.
+
+File diff
+
+Compare file contents and versions.
+
+Archive manager
+
+Create and extract ZIP, TAR and supported archive formats.
+
+File watcher
+
+Monitor filesystem changes.
+
+Directory tree
+
+Generate a bounded project or directory tree.
+
+MIME detector
+
+Identify file types from content and metadata.
+
+PDF reader
+
+Extract text and metadata from PDF documents.
+
+Document reader
+
+Read DOCX, XLSX and PPTX content.
+
+Image metadata
+
+Read image dimensions, format and metadata.
+
+CSV / JSON / YAML
+
+Parse, validate and manipulate common structured file formats.
+
+3. Development & code intelligence tools
+Tools that help agents understand, modify, test and maintain software projects.
+Tool / capability
+
+Description
+
+Code executor
+
+Execute code in supported runtimes.
+
+Syntax checker
+
+Detect syntax errors before execution.
+
+Linter
+
+Run tools such as ESLint or Ruff.
+
+Tool / capability
+
+Description
+
+Formatter
+
+Format code using tools such as Prettier or Black.
+
+Type checker
+
+Run TypeScript, mypy and comparable type checks.
+
+AST parser
+
+Parse source files into abstract syntax trees.
+
+Symbol search
+
+Find functions, classes, variables and declarations.
+
+Reference finder
+
+Find usages and references to symbols.
+
+Dependency analyzer
+
+Analyze imports, packages and dependency relationships.
+
+Project analyzer
+
+Inspect project structure and identify frameworks/configuration.
+
+Test runner
+
+Run unit, integration and end-to-end tests.
+
+Coverage analyzer
+
+Measure and report test coverage.
+
+Build runner
+
+Run project build commands.
+
+Error analyzer
+
+Parse compiler output, exceptions and stack traces.
+
+Code diff
+
+Generate and inspect patches and changed lines.
+
+Code review
+
+Review code changes against configurable guidelines.
+
+Refactoring
+
+Perform safe rename, extract and restructuring operations.
+
+Documentation generator
+
+Generate API and project documentation.
+
+API analyzer
+
+Inspect API definitions and contracts.
+
+Dependency vulnerability
+scanner
+
+Identify known vulnerable dependencies through configured
+advisory sources.
+
+4. Git & version control tools
+Tools for local version-control workflows and hosted repository platforms.
+Tool / capability
+
+Description
+
+Git status
+
+Inspect working tree and staging state.
+
+Git diff
+
+Inspect unstaged, staged and commit-to-commit changes.
+
+Git log
+
+Read commit history.
+
+Tool / capability
+
+Description
+
+Git branch
+
+List and create branches.
+
+Git checkout / switch
+
+Switch branches or revisions.
+
+Git commit
+
+Create commits.
+
+Git add / reset
+
+Stage and unstage changes.
+
+Git merge
+
+Merge branches.
+
+Git rebase
+
+Rebase branches.
+
+Git stash
+
+Save and restore temporary changes.
+
+Git blame
+
+Inspect line-level history.
+
+Git tag
+
+Create and inspect tags.
+
+Git worktree
+
+Manage multiple working trees.
+
+Git conflict analyzer
+
+Identify and summarize merge conflicts.
+
+GitHub integration
+
+Work with repositories, issues, pull requests and reviews.
+
+GitLab integration
+
+Work with projects, merge requests and pipelines.
+
+Bitbucket integration
+
+Work with repositories and pull requests.
+
+5. Web & internet tools
+Tools for retrieving, searching, parsing and monitoring internet resources.
+Tool / capability
+
+Description
+
+Web search
+
+Search the web through configured search providers.
+
+Web fetch
+
+Retrieve webpages and supported web resources.
+
+HTML parser
+
+Extract readable text, metadata and structure from HTML.
+
+URL reader
+
+Read and normalize URL content.
+
+Link extractor
+
+Extract links from documents and webpages.
+
+Search engine adapter
+
+Integrate search providers such as Google or Bing where authorized.
+
+Browser navigation
+
+Navigate to URLs and move through browser history.
+
+Tool / capability
+
+Description
+
+Browser interaction
+
+Click, type, scroll and interact with page controls.
+
+Browser screenshot
+
+Capture page screenshots.
+
+Browser DOM
+
+Inspect the DOM and accessible page structure.
+
+Browser automation
+
+Execute repeatable browser workflows.
+
+Form interaction
+
+Fill and submit forms subject to approval and domain policy.
+
+Download manager
+
+Download approved resources with size and type limits.
+
+Upload manager
+
+Upload files to authorized destinations.
+
+Sitemap reader
+
+Discover URLs from XML sitemaps.
+
+Robots.txt reader
+
+Inspect website crawling directives.
+
+RSS reader
+
+Read and parse RSS/Atom feeds.
+
+Website monitor
+
+Detect changes to watched pages.
+
+HTTP client
+
+Make configurable HTTP requests.
+
+WebSocket client
+
+Connect to authorized WebSocket endpoints.
+
+API explorer
+
+Inspect API endpoints and responses.
+
+6. Database tools
+Tools for querying and administering supported databases. Destructive operations require
+explicit policy authorization.
+Tool / capability
+
+Description
+
+SQL query
+
+Execute parameterized SQL queries.
+
+Schema inspector
+
+Inspect schemas, tables, indexes and relationships.
+
+Table reader
+
+Read table records with pagination and limits.
+
+Table writer
+
+Insert records.
+
+Record updater
+
+Update records.
+
+Record deleter
+
+Delete records.
+
+Tool / capability
+
+Description
+
+Migration runner
+
+Inspect and run database migrations.
+
+Query analyzer
+
+Explain and analyze query plans and performance.
+
+Transaction manager
+
+Create, commit and roll back transactions.
+
+Database backup
+
+Create backups using supported database mechanisms.
+
+Database restore
+
+Restore from approved backups.
+
+Redis
+
+Perform cache and key-value operations.
+
+MongoDB
+
+Perform document database operations.
+
+PostgreSQL
+
+Connect to and operate PostgreSQL databases.
+
+MySQL
+
+Connect to and operate MySQL databases.
+
+SQLite
+
+Connect to and operate SQLite databases.
+
+Vector DB
+
+Perform vector storage and similarity-search operations.
+
+Graph DB
+
+Perform graph queries and traversal operations.
+
+7. AI & LLM-specific tools
+Tools used within AI applications, model workflows and LLM pipelines.
+Tool / capability
+
+Description
+
+LLM invocation
+
+Call configured language model providers.
+
+Model selector
+
+Choose a model based on policy, capability or cost.
+
+Embedding generator
+
+Generate vector embeddings.
+
+Reranker
+
+Rerank retrieved documents or candidates.
+
+Token counter
+
+Estimate or count tokens using model-aware tokenizers.
+
+Context inspector
+
+Inspect context-window usage and composition.
+
+Prompt manager
+
+Store, version and render prompt templates.
+
+Structured output
+
+Request schema-constrained model output.
+
+JSON validator
+
+Validate generated JSON against a schema.
+
+Tool / capability
+
+Description
+
+Model comparison
+
+Compare outputs across configured models.
+
+LLM evaluator
+
+Evaluate outputs against rubrics or reference answers.
+
+Hallucination checker
+
+Assess claims against supplied evidence; never guarantee factuality.
+
+Content classifier
+
+Classify text or other supported content.
+
+Text summarizer
+
+Summarize text and documents.
+
+Translator
+
+Translate supported content.
+
+Speech-to-text
+
+Transcribe audio.
+
+Text-to-speech
+
+Generate speech from text.
+
+Vision analyzer
+
+Analyze image inputs through configured vision models.
+
+OCR
+
+Extract text from images and scanned documents.
+
+Image generator
+
+Generate images through configured providers.
+
+Audio analyzer
+
+Analyze audio content and features.
+
+Guardrail checker
+
+Validate model inputs and outputs against configured safety policies.
+
+Cache manager
+
+Cache model calls and reusable results.
+
+Model fallback
+
+Switch providers or models after eligible failures.
+
+Cost estimator
+
+Estimate model-call expenditure from usage and pricing data.
+
+8. Agent orchestration & coordination tools
+Capabilities for coordinating tasks, agents and workflows. Some are runtime services rather than
+standalone tools exposed to the model.
+Tool / capability
+
+Description
+
+Task planner
+
+Break goals into structured subtasks.
+
+Task manager
+
+Create, update and track tasks.
+
+TODO manager
+
+Maintain actionable task lists.
+
+Sub-agent spawn
+
+Create or invoke specialized agents under configured limits.
+
+Tool / capability
+
+Description
+
+Agent delegation
+
+Delegate work to another agent or worker.
+
+Agent messaging
+
+Send messages between agents.
+
+Agent discovery
+
+Discover available agents and their capabilities.
+
+Agent registry
+
+Register and resolve agent identities and endpoints.
+
+Agent state
+
+Read and update permitted agent state.
+
+Shared context
+
+Share scoped information between agents.
+
+Execution graph
+
+Inspect workflow and agent execution graphs.
+
+Workflow runner
+
+Execute defined workflows.
+
+Parallel executor
+
+Run independent tasks concurrently.
+
+Sequential executor
+
+Run tasks in order.
+
+Retry manager
+
+Retry eligible failed operations with bounded policies.
+
+Checkpoint manager
+
+Save and restore execution checkpoints.
+
+Human approval
+
+Pause for human review and approval.
+
+Handoff manager
+
+Transfer execution control between agents or humans.
+
+Reflection tool
+
+Review prior steps and outcomes.
+
+Plan revision
+
+Revise plans when new information or failures occur.
+
+9. Memory & knowledge management tools
+Tools for retaining and retrieving scoped information across turns and tasks.
+Tool / capability
+
+Description
+
+Memory read
+
+Retrieve stored memories.
+
+Memory write
+
+Store information with scope and retention metadata.
+
+Memory update
+
+Modify stored information.
+
+Memory delete
+
+Delete stored information.
+
+Semantic search
+
+Search content by semantic similarity.
+
+Tool / capability
+
+Description
+
+Vector retrieval
+
+Retrieve similar embeddings.
+
+Knowledge graph
+
+Store and query entity relationships.
+
+Entity extraction
+
+Extract people, places, objects and concepts.
+
+Relationship extraction
+
+Identify relationships between entities.
+
+Conversation history
+
+Retrieve permitted conversation history.
+
+Summarization memory
+
+Compress prior interactions into summaries.
+
+User profile
+
+Maintain explicitly authorized user preferences.
+
+Episodic memory
+
+Store prior experiences and events.
+
+Working memory
+
+Maintain transient context for the current task.
+
+Context compaction
+
+Reduce context size while preserving relevant information.
+
+Knowledge indexing
+
+Index documents and data sources.
+
+Document retrieval
+
+Retrieve relevant passages and citations.
+
+Memory consolidation
+
+Merge, deduplicate and organize related memories.
+
+10. Cloud & DevOps tools
+Tools for infrastructure, deployment, containers and operations.
+Tool / capability
+
+Description
+
+Docker
+
+Build and run containers.
+
+Docker Compose
+
+Manage multi-container applications.
+
+Kubernetes
+
+Manage clusters and workloads.
+
+kubectl
+
+Interact with Kubernetes resources.
+
+Helm
+
+Manage Kubernetes charts and releases.
+
+Terraform
+
+Plan and provision infrastructure as code.
+
+Pulumi
+
+Provision infrastructure using supported languages.
+
+AWS SDK
+
+Perform authorized AWS operations.
+
+Tool / capability
+
+Description
+
+Azure SDK
+
+Perform authorized Azure operations.
+
+GCP SDK
+
+Perform authorized Google Cloud operations.
+
+Cloud storage
+
+Operate on S3, R2, GCS and compatible object storage.
+
+Container registry
+
+Push, pull and inspect container images.
+
+Deployment
+
+Deploy applications to configured targets.
+
+CI/CD
+
+Trigger and inspect build/deployment pipelines.
+
+Log reader
+
+Read application and infrastructure logs.
+
+Metrics reader
+
+Inspect telemetry metrics.
+
+Health checker
+
+Check service health and readiness.
+
+Secret manager
+
+Read and manage secrets through an external secret store without exposing
+values to model context.
+
+DNS manager
+
+Manage authorized DNS records.
+
+Certificate manager
+
+Manage TLS certificates.
+
+Infrastructure
+monitor
+
+Monitor infrastructure health and events.
+
+Cost monitor
+
+Track cloud resource expenditure.
+
+11. Browser, desktop & GUI automation
+Tools for controlling websites and graphical applications. GUI access is opt-in and must be visibly
+scoped.
+Tool / capability
+
+Description
+
+Browser session
+
+Create and manage browser sessions.
+
+Tab manager
+
+Open, close and switch tabs.
+
+Screenshot
+
+Capture browser or desktop screens.
+
+DOM inspector
+
+Inspect DOM elements.
+
+Element locator
+
+Locate UI elements using selectors or accessibility semantics.
+
+Tool / capability
+
+Description
+
+Click
+
+Click UI elements.
+
+Type
+
+Enter text into UI elements.
+
+Keyboard
+
+Send keyboard input.
+
+Scroll
+
+Scroll pages and containers.
+
+Drag and drop
+
+Interact with draggable UI elements.
+
+File picker
+
+Select files through an authorized file dialog.
+
+Clipboard
+
+Read or write clipboard content with permission.
+
+Accessibility tree
+
+Inspect accessible UI structure.
+
+Desktop screenshot
+
+Capture desktop screenshots.
+
+Mouse control
+
+Control pointer movement and clicks.
+
+Keyboard control
+
+Control keyboard input.
+
+Window manager
+
+Inspect and manage application windows.
+
+App launcher
+
+Launch approved applications.
+
+UI automation
+
+Automate desktop workflows.
+
+12. Communication & productivity tools
+Connectors for collaboration, documents and work-management services.
+Tool / capability
+
+Description
+
+Email
+
+Read, draft and send emails with account permissions.
+
+Calendar
+
+Read and create calendar events.
+
+Slack
+
+Read channels and send messages.
+
+Discord
+
+Interact with authorized servers and channels.
+
+Microsoft Teams
+
+Work with messages, meetings and teams.
+
+Notion
+
+Read and update pages and databases.
+
+Google Drive
+
+Search and manage files.
+
+Tool / capability
+
+Description
+
+Google Sheets
+
+Read and update spreadsheets.
+
+Linear
+
+Manage issues and projects.
+
+Jira
+
+Manage issues and workflows.
+
+Trello
+
+Manage boards and cards.
+
+GitHub Issues
+
+Create and update GitHub issues.
+
+Notifications
+
+Send notifications through configured channels.
+
+Webhooks
+
+Trigger external workflows.
+
+Contact manager
+
+Manage authorized contact records.
+
+Meeting scheduler
+
+Schedule meetings subject to availability and approval.
+
+13. API & integration tools
+General-purpose mechanisms for connecting to external systems.
+
+Tool / capability
+
+Description
+
+REST client
+
+Make authenticated or unauthenticated REST requests.
+
+GraphQL client
+
+Execute GraphQL queries and mutations.
+
+gRPC client
+
+Call configured gRPC services.
+
+OpenAPI reader
+
+Read OpenAPI specifications.
+
+OAuth manager
+
+Manage delegated OAuth authorization flows.
+
+API key manager
+
+Manage references to API credentials; keep secret values out of model-visible
+outputs.
+
+Webhook listener
+
+Receive webhook events.
+
+Webhook sender
+
+Send webhook events.
+
+SDK executor
+
+Invoke configured third-party SDK operations.
+
+Rate limiter
+
+Apply per-provider and per-tool request limits.
+
+Request validator
+
+Validate API request inputs.
+
+Response parser
+
+Parse API responses.
+
+API schema
+generator
+
+Generate schemas from API descriptions or examples.
+
+Integration registry
+
+Discover and register integration packages.
+
+14. Security & permissions capabilities
+Cross-cutting controls enforced by the runtime. These are not all agent-callable tools; most are
+policy and execution services.
+Tool / capability
+
+Description
+
+Permission manager
+
+Define allowed operations and scopes.
+
+Access control
+
+Control access to resources and identities.
+
+Sandbox manager
+
+Create and manage isolated execution environments.
+
+Command allowlist
+
+Restrict shell commands using policy.
+
+Command blocklist
+
+Deny explicitly prohibited commands as a supplementary control.
+
+Tool / capability
+
+Description
+
+Path restriction
+
+Prevent filesystem access outside approved roots.
+
+Network restriction
+
+Control outbound network access and destinations.
+
+Secret redaction
+
+Remove sensitive values from logs and tool results.
+
+Credential isolation
+
+Keep credentials outside model-visible context.
+
+Approval manager
+
+Require human approval for sensitive actions.
+
+Execution timeout
+
+Stop operations that exceed time limits.
+
+Resource limiter
+
+Limit CPU, memory, disk, process and output usage.
+
+Audit logger
+
+Record attributable execution events.
+
+Input validator
+
+Validate tool inputs before execution.
+
+Output sanitizer
+
+Sanitize outputs before returning them to an agent.
+
+Rate limiter
+
+Prevent excessive tool invocation.
+
+Policy engine
+
+Evaluate execution requests against policy.
+
+Risk classifier
+
+Estimate operation risk to help route approvals.
+
+Permission escalation
+
+Request additional privileges through explicit approval.
+
+Container isolation
+
+Isolate processes using container or OS-native mechanisms.
+
+15. Testing, debugging & observability tools
+Tools for diagnosing agent runs and improving reliability.
+Tool / capability
+
+Description
+
+Trace collector
+
+Collect correlated execution traces.
+
+Execution logger
+
+Log tool invocations and outcomes.
+
+Debugger
+
+Inspect execution state and failures.
+
+Breakpoint manager
+
+Pause supported executions at breakpoints.
+
+Performance profiler
+
+Measure CPU and runtime performance.
+
+Memory profiler
+
+Inspect memory consumption.
+
+Tool / capability
+
+Description
+
+Test generator
+
+Generate tests from code or specifications.
+
+Test executor
+
+Execute test suites.
+
+Coverage analyzer
+
+Measure code coverage.
+
+Mock server
+
+Simulate external APIs.
+
+Tool mocker
+
+Mock tool responses.
+
+Response recorder
+
+Record sanitized execution results.
+
+Replay engine
+
+Replay recorded tool interactions deterministically where possible.
+
+Error tracker
+
+Track and group failures.
+
+Metrics collector
+
+Collect operational metrics.
+
+Cost tracker
+
+Track estimated or provider-reported costs.
+
+Latency tracker
+
+Measure tool and workflow latency.
+
+Evaluation runner
+
+Evaluate agent behavior against test cases.
+
+Regression detector
+
+Detect behavioral, performance and cost regressions.
+
+16. Data processing & analytics tools
+Tools for structured data transformation and analysis.
+
+Tool / capability
+
+Description
+
+CSV processor
+
+Read and manipulate CSV files.
+
+JSON processor
+
+Manipulate JSON data.
+
+XML processor
+
+Parse and transform XML.
+
+YAML processor
+
+Parse and transform YAML.
+
+Excel processor
+
+Read and modify workbooks.
+
+Dataframe operations
+
+Manipulate tabular data.
+
+SQL analytics
+
+Analyze datasets using SQL.
+
+Data transformation
+
+Transform and reshape data.
+
+ETL runner
+
+Extract, transform and load data.
+
+Data validation
+
+Validate datasets against rules and schemas.
+
+Data cleaning
+
+Clean and normalize datasets.
+
+Statistical analysis
+
+Perform statistical operations.
+
+Chart generation
+
+Generate data visualizations.
+
+Report generator
+
+Generate analytical reports.
+
+Spreadsheet formulas
+
+Calculate and manipulate spreadsheet formulas.
+
+17. Media & content processing tools
+Tools for manipulating and extracting information from media and documents.
+Tool / capability
+
+Description
+
+Image reader
+
+Read supported image content and metadata.
+
+Image cropper
+
+Crop images.
+
+Image converter
+
+Convert image formats.
+
+Image compressor
+
+Compress images.
+
+OCR
+
+Extract text from images and scans.
+
+Video metadata
+
+Inspect video properties.
+
+Tool / capability
+
+Description
+
+Video frames
+
+Extract frames from videos.
+
+Video summarizer
+
+Summarize video content using supported models.
+
+Audio reader
+
+Read supported audio files.
+
+Audio transcription
+
+Transcribe audio.
+
+Audio segmentation
+
+Split audio into segments.
+
+Audio converter
+
+Convert audio formats.
+
+Subtitle generator
+
+Generate subtitles.
+
+PDF generator
+
+Generate PDFs.
+
+PDF merger
+
+Merge PDF files.
+
+PDF splitter
+
+Split PDF files.
+
+Document converter
+
+Convert document formats.
+
+18. Domain-specific tools
+Optional extension packages for industry-specific workflows. These require domain review,
+provider credentials and additional compliance controls.
+
+Tool /
+capability
+
+Description
+
+Finance
+
+Stock data, portfolio analysis and accounting workflows.
+
+E-commerce
+
+Product search, inventory, catalog and order operations.
+
+CRM
+
+Customer records, leads and sales pipelines.
+
+Marketing
+
+SEO analysis, campaigns and analytics.
+
+Legal
+
+Document analysis and clause extraction; not a substitute for legal advice.
+
+Research
+
+Academic paper search, metadata and citation extraction.
+
+Education
+
+Assessment, grading and tutoring workflows.
+
+Healthcare
+
+Medical document workflows and scheduling, subject to applicable privacy and
+safety requirements.
+
+GIS
+
+Maps, geocoding and spatial queries.
+
+IoT
+
+Device control and telemetry.
+
+Blockchain
+
+Wallet, smart-contract and chain-query integrations.
+
+Gaming
+
+Game state, player data and game API integrations.
+
+19. MCP & external tool ecosystem
+Capabilities for exposing Agentic Tools and connecting it to other tool providers.
+
+Tool / capability
+
+Description
+
+MCP client
+
+Connect to MCP servers.
+
+MCP server
+
+Expose tools through MCP.
+
+MCP tool discovery
+
+Discover tools available from connected MCP servers.
+
+MCP resource reader
+
+Read MCP resources.
+
+MCP prompt reader
+
+Retrieve MCP prompts.
+
+MCP transport
+
+Support stdio and Streamable HTTP transports where compatible.
+
+MCP authentication
+
+Authenticate MCP connections.
+
+MCP session manager
+
+Manage MCP sessions and lifecycle.
+
+MCP server registry
+
+Maintain configured MCP server connections.
+
+Tool schema
+converter
+
+Convert supported schemas between tool formats.
+
+Tool adapter
+
+Translate canonical tool definitions and calls into framework-specific
+formats.
+
+End of PRD — Version 0.2
+
+
