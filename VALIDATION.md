@@ -1,10 +1,11 @@
 # Validation status
 
-This is a P0 prototype for review, aligned to the supplied PRD v0.2 dated November 9, 2026. It is not an alpha release or evidence of demand. The original prototype is preserved in the preceding baseline commit.
+This is a P0 prototype with partial P1/P2 extensions for review, aligned to the supplied PRD v0.2 dated November 9, 2026. It is not an alpha release or evidence of demand. The original prototype is preserved in the preceding baseline commit.
 
 ## Current local checkpoint
 
-The code checkpoint now has 221 tests (218 plus three mapped-IPv6 regressions).
+The code checkpoint has 221 tests (218 plus three mapped-IPv6 regressions),
+all passing separately on Linux Node 22.23.5, 24.22.3 and 26.13.1.
 Before the IPv6 fix, a fresh source checkout using an empty pnpm store downloaded
 all 155 dependencies, then passed build/typecheck and 218 tests separately on
 Linux Node 22.23.5, 24.22.3 and 26.13.1 without skips. All five examples and CLI

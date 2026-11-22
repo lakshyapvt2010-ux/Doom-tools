@@ -173,3 +173,5 @@ HTTP/web/database/browser tools, mock/replay, Windows support, additional adapte
 - [docs/competitive-review.md](docs/competitive-review.md) — section 20 landscape review (interviews pending)
 - [docs/troubleshooting.md](docs/troubleshooting.md) — common errors
 - [docs/compatibility.md](docs/compatibility.md) — platform and client matrix
+
+Remaining scope and release gates: [docs/remaining-work.md](docs/remaining-work.md).

@@ -45,6 +45,6 @@ a roadmap, not an instruction to build every integration it lists.
   or tokenizer was chosen; the fallback estimate is approximate.
 - License, publishing, deployment, interviews and any paid provider evaluation
   require separate owner decisions. Nothing here selects them automatically.
-- Remote feature-PR versus direct-main organization is awaiting the owner's
-  clarification. Existing pushed history is preserved. Commits remain focused
-  with their own scope, test evidence and caveats.
+- The owner delegated remote organization: this pass keeps direct-to-main with
+  focused, explained commits, rather than a PR stack. Existing pushed history
+  is preserved; later releases can choose a different review structure.
