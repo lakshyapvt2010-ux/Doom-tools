@@ -99,23 +99,24 @@ export function postgres(options: PostgresOptions = {}): ToolDefinition[] {
             options: `-c default_transaction_read_only=on -c statement_timeout=${statementTimeoutMs} -c idle_in_transaction_session_timeout=${statementTimeoutMs}`,
             connectionTimeoutMillis: 10_000
           });
+          const onAbort = () => { void client.end().catch(() => undefined); };
+          ctx.signal.addEventListener("abort", onAbort, { once: true });
           try {
-            await Promise.race([
-              client.connect(),
-              new Promise<never>((_, reject) => {
-                const onAbort = () => reject(new ToolError("cancelled", "Request cancelled"));
-                ctx.signal.addEventListener("abort", onAbort, { once: true });
-              })
-            ]);
+            if (ctx.signal.aborted) throw new ToolError("cancelled", "Request cancelled");
+            await client.connect();
           } catch (error) {
-            if (error instanceof ToolError) throw error;
+            ctx.signal.removeEventListener("abort", onAbort);
+            await client.end().catch(() => undefined);
+            if (ctx.signal.aborted) throw new ToolError("cancelled", "Request cancelled");
             throw new ToolError("provider_error", "Could not connect to PostgreSQL", { retryable: true });
           }
           try {
             let result: pg.QueryResult<Record<string, unknown>>;
             try {
+              await client.query("BEGIN READ ONLY");
               result = await client.query(`SELECT * FROM (${sql}\n) AS at_q LIMIT ${maxRows + 1}`, params as unknown[]);
             } catch (error) {
+              if (ctx.signal.aborted) throw new ToolError("cancelled", "Request cancelled");
               const msg = error instanceof Error ? error.message : "error";
               const code = /read-only/i.test(msg) ? "permission_denied" : "validation";
               throw new ToolError(code, `Query failed: ${msg.slice(0, 200)}`);
@@ -140,6 +141,7 @@ export function postgres(options: PostgresOptions = {}): ToolDefinition[] {
               rows: shaped
             };
           } finally {
+            ctx.signal.removeEventListener("abort", onAbort);
             await client.end().catch(() => undefined);
           }
         }

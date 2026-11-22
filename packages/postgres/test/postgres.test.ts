@@ -3,7 +3,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import test, { after } from "node:test";
 
 import { createToolkit } from "@agentic-tools/runtime";
 import pg from "pg";
@@ -39,6 +39,7 @@ async function startCluster() {
   const seed = new pg.Pool({ host: "127.0.0.1", port, user: "postgres", database: "postgres" });
   await seed.query("CREATE TABLE t(id INTEGER, name TEXT)");
   await seed.query("INSERT INTO t VALUES (1,'a'),(2,'b'),(3,'c')");
+  await seed.query("CREATE FUNCTION write_attempt() RETURNS integer LANGUAGE plpgsql AS $$ BEGIN INSERT INTO t VALUES (4, 'd'); RETURN 4; END $$");
   await seed.end();
   cluster = {
     dir,
@@ -50,6 +51,8 @@ async function startCluster() {
   return cluster;
 }
 
+after(() => cluster?.stop());
+
 const ws = () => mkdtempSync(join(tmpdir(), "at-pgtest-"));
 const kit = (opts: Parameters<typeof postgres>[0], grant = true) =>
   createToolkit({
@@ -60,7 +63,7 @@ const kit = (opts: Parameters<typeof postgres>[0], grant = true) =>
 
 maybe("read-only query against a real PostgreSQL server", async (t) => {
   const { port, stop } = await startCluster();
-  t.after(stop);
+
   const k = kit({ port, database: "postgres", user: "postgres" });
 
   const r = await k.invoke("postgres.query", { sql: "SELECT id, name FROM t WHERE id >= $1 ORDER BY id", params: [2] });
@@ -78,11 +81,19 @@ maybe("read-only query against a real PostgreSQL server", async (t) => {
   const guarded = await k.invoke("postgres.query", { sql: "DELETE FROM t" });
   assert.equal(guarded.status, "error");
 
-  // Server-side read-only enforcement fires even if a write slips past the
-  // guard shape (CTE-wrapped writes are caught by the guard; this exercises
-  // the session barrier directly through a function that writes).
-  const ro = await k.invoke("postgres.query", { sql: "SELECT pg_backend_pid() AS pid" });
-  assert.equal(ro.status, "success");
+  // The SQL guard allows a SELECT function call; the actual database must
+  // refuse the function's INSERT inside the explicit READ ONLY transaction.
+  const ro = await k.invoke("postgres.query", { sql: "SELECT write_attempt()" });
+  assert.equal(ro.status === "error" && ro.error.code, "permission_denied");
+  const downgrade = await k.invoke("postgres.query", { sql: "SELECT set_config('transaction_read_only', 'off', false)" });
+  assert.equal(downgrade.status, "error");
+  const small = kit({ port, database: "postgres", user: "postgres", maxRows: 1 });
+  const bounded = await small.invoke("postgres.query", {sql: "SELECT id FROM t ORDER BY id"});
+  assert.equal(bounded.status, "success");
+  if (bounded.status === "success") {
+    assert.equal((bounded.output as {truncated:boolean}).truncated, true);
+    assert.deepEqual((bounded.output as {rows:unknown[]}).rows, [{id:1}]);
+  }
 
   // Data unchanged after the rejected write.
   const after = await k.invoke("postgres.query", { sql: "SELECT count(*) AS n FROM t" });
@@ -91,7 +102,7 @@ maybe("read-only query against a real PostgreSQL server", async (t) => {
 
 maybe("multi-statement and non-SELECT are rejected", async (t) => {
   const { port, stop } = await startCluster();
-  t.after(stop);
+
   const k = kit({ port, database: "postgres", user: "postgres" });
   for (const sql of ["SELECT 1; DROP TABLE t", "PRAGMA x", "INSERT INTO t VALUES (9,'z')"]) {
     const r = await k.invoke("postgres.query", { sql });

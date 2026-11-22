@@ -11,3 +11,12 @@ PRD section 13 (P1: "Database read operations for SQLite and PostgreSQL; mutatio
 Limits: a query can read anything the configured role can see, so connect with a least-privilege read role. The guard is a first line, the read-only session is the real write barrier, but neither limits *what* can be read. An expensive query can burn CPU until the statement timeout fires. Database contents can carry prompt injection. No mutations, no LISTEN/NOTIFY, no COPY, no other database engines.
 
 The test suite spins up a throwaway PostgreSQL cluster from system binaries (`initdb`/`pg_ctl`) and skips with a reason when they are absent; point `AGENTIC_PG_BIN` at a bin directory to use a non-standard install.
+
+Follow-up hardening: each query now runs inside an explicit `BEGIN READ ONLY`
+transaction in addition to the connection default. Tests call a stored function
+that attempts INSERT (server rejects it), reject a transaction-read-only
+downgrade, and verify the actual row cap. Caller abort closes the connection and
+listeners are removed. A read-only transaction is not a function sandbox:
+privileged PostgreSQL functions can have non-table side effects or access files
+and networks. The host must restrict function execution and use a non-superuser,
+least-privilege role. Do not connect arbitrary agent queries as a superuser.
