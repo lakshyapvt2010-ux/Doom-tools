@@ -256,6 +256,28 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
+  packages/sqlite:
+    dependencies:
+      '@agentic-tools/core':
+        specifier: workspace:*
+        version: link:../core
+      '@agentic-tools/filesystem':
+        specifier: workspace:*
+        version: link:../filesystem
+    devDependencies:
+      '@agentic-tools/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@agentic-tools/security':
+        specifier: workspace:*
+        version: link:../security
+      '@types/node':
+        specifier: ^22.9.0
+        version: 22.20.5
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   packages/testing:
     dependencies:
       '@agentic-tools/core':

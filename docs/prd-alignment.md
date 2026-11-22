@@ -20,6 +20,7 @@ Source: the product owner's supplied PRD v0.2, prepared November 9, 2026. The ap
 | FR-021; section 10.3 | External MCP tools registered as untrusted, approval-gated, capability-gated tools | `packages/mcp-client/test/mcp-client.test.ts` (7 tests) |
 | Section 13 row 5; sections 9.1, 9.2 | Policy-gated HTTP fetch with host allowlist, private-address refusal, bounded untrusted output | `packages/web/test/web.test.ts` (8 tests) |
 | Section 16; FR-019; section 8.6 | Token-footprint budget gate; git default set made statically read-only (`git.branches`) | `packages/adversarial/test/footprint.test.ts`, `packages/git/test/git.test.ts` |
+| Section 13 (SQLite read, P1) | Read-only confined SQLite query with explicit grant | `packages/sqlite/test/sqlite.test.ts` (8 tests) |
 | Section 17 | Runnable read-only repository assistant and observability/compatibility guides | Example smoke run, build/typecheck and integration tests |
 
 ## Deliberately not claimed
