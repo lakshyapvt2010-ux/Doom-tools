@@ -279,7 +279,7 @@ export async function invokeTool(
       const reason = controller.signal.reason as ToolError;
       result = fail(reason.code, reason.message);
     } else {
-      result = fail(error instanceof ToolError ? error.code : "execution_error", error instanceof Error ? error.message : "Tool execution failed.");
+      result = fail(error instanceof ToolError ? error.code : "execution_error", error instanceof ToolError ? error.message : "Tool execution failed.");
     }
   } finally {
     clearTimeout(timer);

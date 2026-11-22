@@ -125,3 +125,12 @@ test("trace snapshots cannot alter stored outcome evidence", async t => {
   assert.equal(toolkit.traceRecords()[0]?.tool.name, "observe.echo");
   assert.equal(toolkit.traceRecords()[0]?.status, "success");
 });
+
+
+test("raw tool definitions cannot leak arbitrary exception diagnostics", async t => {
+  const tool = { ...echo, execute: async () => { throw new Error("unregistered-private-error-canary"); } } as ToolDefinition;
+  const toolkit = setup(t, [tool]);
+  const result = await toolkit.invoke(tool.name, { text: "ok" });
+  assert.equal(result.status === "error" && result.error.code, "execution_error");
+  assert.ok(!JSON.stringify([result, toolkit.auditEvents(), toolkit.traceRecords()]).includes("unregistered-private-error-canary"));
+});

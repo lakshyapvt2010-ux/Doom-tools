@@ -12,7 +12,7 @@ requirements for this pass.
 | FR003 registry | Name/version discovery, exact resolution and SemVer precedence tests; opaque imported versions retained | No new feature gate identified |
 | FR004 context | Scoped services, trace, abort/deadline tests | No new feature gate identified |
 | FR005 policy | Runtime authorization, constrained paths/hosts, deny tests | Independent review; container acceptance separate |
-| FR006 approval | Exact-input snapshots, expiring single-use tickets, callback/CLI/webhook and MCP/native bridges | Named desktop client verification; multi-user durable services are not shipped |
+| FR006 approval | Exact-input snapshots, expiring single-use tickets, callback/CLI/file queue and MCP/native bridges | Named desktop client verification; multi-user durable services are not shipped |
 | FR007 workspace | Traversal, symlink, dangling link and enclosing-Git-root tests | Native Windows checks; host TOCTOU limit remains disclosed |
 | FR008 bounds | Runtime timeouts/output caps, Bash tree kill, Git abort, cleanup regressions | Real Docker timeout/cancel/cleanup checks |
 | FR009 envelopes | Stable results/error codes, generic unknown-exception diagnostics | Provider diagnostics review remains advisable |
