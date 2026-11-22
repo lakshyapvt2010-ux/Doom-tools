@@ -14,6 +14,7 @@
  * (FR-010/FR-015). defineTool only produces a valid ToolDefinition.
  */
 
+import type { SchemaInput } from "./schema-input.js";
 import type {
   InvocationClass,
   JSONSchema,
@@ -75,6 +76,12 @@ function assertValidMetadata(options: DefineToolOptions<unknown, unknown>): void
   }
 }
 
+export function defineTool<const S extends JSONSchema, TOutput>(
+  options: Omit<DefineToolOptions<SchemaInput<S>, TOutput>, "inputSchema"> & { inputSchema: S }
+): ToolDefinition<SchemaInput<S>, TOutput>;
+export function defineTool<TInput = unknown, TOutput = unknown>(
+  options: DefineToolOptions<TInput, TOutput>
+): ToolDefinition<TInput, TOutput>;
 export function defineTool<TInput = unknown, TOutput = unknown>(
   options: DefineToolOptions<TInput, TOutput>
 ): ToolDefinition<TInput, TOutput> {

@@ -42,3 +42,5 @@ export type { DefineToolOptions } from "./define-tool.js";
 
 export { defineZodTool } from "./zod.js";
 export type { DefineZodToolOptions, ZodLike } from "./zod.js";
+
+export type { SchemaInput } from "./schema-input.js";

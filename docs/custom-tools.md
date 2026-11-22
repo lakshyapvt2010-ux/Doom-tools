@@ -45,3 +45,12 @@ policy, approvals, tracing, budgets and audit apply automatically (PRD 11).
 
 Invoke through a toolkit in a temp workspace; or call `definition.execute(input, ctx)`
 directly with a stub `ToolContext` for pure unit tests (see `packages/*/test/*.test.ts`).
+
+Inline literal JSON Schemas infer input types in `defineTool` without a manual
+input generic. Required and optional object fields, nested objects, arrays,
+primitive types, nullable type arrays, enum/const and anyOf/oneOf unions are
+covered. Widened schemas, references and unsupported inference constructs remain
+unknown rather than pretending to infer them. Runtime JSON Schema validation is
+still required; TypeScript types are not an authorization or validation boundary.
+Explicit input/output generics remain supported. Exported `SchemaInput<S>` can
+also be used in host code.
