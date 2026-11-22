@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { defineTool } from "@agentic-tools/core";
@@ -16,6 +16,6 @@ test("workspace aliases and policy capability paths share one canonical root", a
     classify: () => ({ sideEffect: "read", risk: "low", capabilities: [{ name: "filesystem.read", path: "." }] }),
     execute: async () => "ok" });
   const toolkit = createToolkit({ workspace: alias, tools: [tool] });
-  assert.equal(toolkit.workspace, real);
+  assert.equal(toolkit.workspace, realpathSync(real));
   assert.equal((await toolkit.invoke(tool.name, {})).status, "success");
 });
