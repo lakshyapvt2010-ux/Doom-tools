@@ -8,6 +8,7 @@ import {
   RISK_ORDER, SIDE_EFFECT_ORDER, evaluatePolicy, newAuditEvent, type Approver
 } from "@agentic-tools/security";
 import { assertResultBudget, boundResult, AUDIT_FAILURE_WARNING } from "./envelope.js";
+import { snapshotInput } from "./input-snapshot.js";
 import { shapeResult } from "./shaping.js";
 import { scopeServices } from "./services.js";
 import { canonicalizeCapabilityPath } from "./paths-util.js";
@@ -138,6 +139,9 @@ export async function invokeTool(
     return finish(fail("permission_denied", `Tool "${name}" is not exposed to this toolkit, run or server.`));
   }
   if (options.signal?.aborted) return finish(cancelled());
+
+  try { input = snapshotInput(input); }
+  catch { return finish(fail("validation", "Input must be plain JSON-compatible data without cycles or accessors.")); }
 
   try {
     const validate = validatorFor(tool);

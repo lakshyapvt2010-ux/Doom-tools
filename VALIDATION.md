@@ -197,3 +197,11 @@ never permit an oversized result. Nine focused tests cover defaults, errors,
 metadata/warnings, terminal-sink failure, impossible budgets, per-tool narrowing,
 tokens, invalid serialization and oversized correlation IDs. This does not bound
 SDK/protocol framing, upstream allocations or SDK-owned validation feedback.
+
+## Approval-input snapshot regression (local follow-up)
+
+Three tests cover caller mutation during a pending approval, deep freezing and
+rejection of cycles/accessors/non-JSON objects before execution or approval.
+The runtime previously retained the caller's mutable input object across an
+asynchronous approval. It now copies/fixes the JSON input before classification.
+This is verified locally, not an independent security review.
