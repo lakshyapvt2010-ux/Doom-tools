@@ -102,7 +102,7 @@ test("classification is clamped to declared bounds (FR-020)", async () => {
     classify: () => ({
       sideEffect: "destructive" as const,
       risk: "high" as const,
-      capabilities: [{ name: "cloud.deploy" }]
+      capabilities: [{ name: "filesystem.read", path: "." }]
     }),
     execute: async () => "ok"
   });
