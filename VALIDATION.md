@@ -106,3 +106,27 @@ The in-memory audit sink is now bounded at 10,000 events (oldest dropped, `dropp
 ## PostgreSQL read tool
 
 New `@agentic-tools/postgres` package with `postgres.query`: one read-only SELECT/WITH/VALUES against a host-configured PostgreSQL (connection string or discrete settings; credentials never enter tool input). Enforcement is layered: the shared SQL guard, a session opened with `default_transaction_read_only=on`, statement_timeout, row and cell caps, untrusted output, and the explicit `database.read` grant. 3 tests run against a real throwaway PostgreSQL 16 cluster (initdb/pg_ctl): parameterized reads with untrusted/capped output, rejection of DELETE/multi-statement/PRAGMA-class input with data unchanged, and fail-closed denial without the grant. The suite skips with a reason when server binaries are absent (`AGENTIC_PG_BIN` overrides the search path); GitHub ubuntu runners ship them. Locally validated against standalone PostgreSQL 16.16 binaries on Linux Node 22. Read scope is the configured role's, so a least-privilege role is the host's job. See docs/postgres.md.
+
+## Pluggable search and additional framework adapters
+
+`web.search` adds a host-owned provider interface with no selected default backend
+or API key. Six new tests cover host policy/approval, caps, shaping, malformed
+output and provider errors. Callbacks are trusted host code, not egress-confined;
+`web.fetch` DNS/private-network checks do not automatically apply to them.
+
+LangChain core 1.5.0: eight tests through real DynamicStructuredTool invocations,
+covering success, runtime errors, approval, envelope mode, selection, names and
+cancellation. Framework input parsing failures are normalized to validation envelopes
+without executing the callback; they do not enter runtime audit. LangGraph 1.7.5 ToolNode executes success and approval rejection; no hosted model was exercised.
+
+OpenAI Agents 0.22.0: seven tests through real SDK function tools, including Agent
+construction, optional input preservation, validation, approval, envelopes,
+selection, name collisions and cancellation. A real SDK Runner loop uses the local ScriptedModel with tracing disabled. No hosted model was
+exercised. Both adapter packages declare only tested minor peer ranges.
+
+PostgreSQL follow-up corrects the earlier test's misleading read-only comment:
+pg_backend_pid did not exercise write rejection. Now a stored function actually
+attempts INSERT and is rejected by the server. Each query uses BEGIN READ ONLY;
+a transaction-mode downgrade and actual row cap are tested. Connection abort
+cleanup improved. Read-only SQL is not containment for privileged functions;
+least-privilege role and function restrictions remain host responsibilities.

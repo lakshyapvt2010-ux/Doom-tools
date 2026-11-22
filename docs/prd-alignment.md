@@ -33,3 +33,9 @@ Source: the product owner's supplied PRD v0.2, prepared November 9, 2026. The ap
 ## Deliberately not claimed
 
 No competitor/demand gate, external developer usability test, hosted model benchmark, named desktop MCP-client certification, deployment, publication, container sandbox or broad roadmap catalogue was completed. The original prototype's 89 files are preserved in the baseline commit; this pass is a separate improvement commit. See [VALIDATION.md](../VALIDATION.md) for the remaining gaps and the measured test result.
+
+P1 follow-up: pluggable `web.search` interface (no default provider), LangChain
+structured-tool adapter and OpenAI Agents function-tool adapter are implemented
+and tested locally with their real SDKs. See docs/adapters.md for the exact
+verified boundaries and framework-prevalidation/approval-bridge limits. Docker, Windows,
+full model-driven LangGraph loops, hosted models and next-push CI are not validated by these tests.

@@ -49,7 +49,7 @@ for (const route of ["mcp", "vercel-sdk"] as const) {
       t.after(async () => { await client.close(); await server.close(); });
       invoke = async (name, args) => (await client.callTool({ name, arguments: args })).structuredContent as unknown as ToolResult;
     } else {
-      const tools = toVercelAI(toolkit, { wrapSchema: jsonSchema, returnEnvelope: true,
+      const tools = toVercelAI(toolkit, { wrapSchema: schema => jsonSchema(schema as Parameters<typeof jsonSchema>[0]), returnEnvelope: true,
         nameForTool: (name) => name.replaceAll(".", "_") }) as ToolSet;
       invoke = async (name, args) => {
         const generated = await generateText({

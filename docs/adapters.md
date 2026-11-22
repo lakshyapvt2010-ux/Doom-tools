@@ -28,7 +28,7 @@ await serveMcp(toolkit, { transport: "stdio", name: "my-tools" });
 import { jsonSchema } from "ai";
 import { toVercelAI } from "@agentic-tools/adapter-vercel";
 const tools = toVercelAI(toolkit, {
-  wrapSchema: jsonSchema,
+  wrapSchema: schema => jsonSchema(schema as Parameters<typeof jsonSchema>[0]),
   nameForTool: name => name.replaceAll(".", "_")
 });
 ```
@@ -66,3 +66,46 @@ CLI: `agentic-tools serve --http [--host H] [--port N]`. Set the bearer token in
 - Tool exposure, policy, approvals, audit and redaction are the same runtime paths as stdio. A tool that needs approval is hidden unless the client supports elicitation or an out-of-band approver exists.
 
 Limits: no TLS (use a reverse proxy for remote access), no OAuth, one shared bearer token, no rate limiting, in-memory sessions. Tested with the real MCP SDK client; no named desktop client or hosted model was exercised.
+
+## LangChain (P1)
+
+```ts
+import { toLangChain } from "@agentic-tools/adapter-langchain";
+const tools = toLangChain(toolkit, {
+  nameForTool: name => name.replaceAll(".", "_")
+});
+```
+
+Returns real `DynamicStructuredTool` objects from `@langchain/core` 1.5.0.
+Canonical JSON Schema is retained. All executions invoke the runtime; output is
+JSON text. Runtime failures throw `ToolExecutionError` with `.code` and `.result`;
+`returnEnvelope: true` returns the serialized envelope. LangChain validates JSON
+Schema before invoking the callback. Its parsing failures are normalized to a
+safe `validation` envelope without running the callback. Such framework-level
+rejections do not enter runtime audit; executed calls do. Cancellation config is forwarded. Selection and name collisions are
+checked. LangGraph 1.7.5 ToolNode integration is tested for successful calls and
+fail-closed approval errors, with handleToolErrors:false. No hosted model or
+full model-driven LangGraph loop has been tested. There is no native
+LangGraph interrupt bridge: runtime approvers still own approvals.
+
+## OpenAI Agents SDK (P1)
+
+```ts
+import { toOpenAIAgents } from "@agentic-tools/adapter-openai-agents";
+const tools = toOpenAIAgents(toolkit);
+```
+
+Returns real SDK function tools, tested with `@openai/agents` 0.22.0, including
+construction of an `Agent` and local invocation without an API key. Dots map to
+underscores by default; invalid names and collisions fail before exposure.
+Object JSON Schema is passed unchanged with `strict: false` so optional fields
+stay optional. Runtime validation remains mandatory. Outputs are JSON text.
+`errorFunction: null` prevents the SDK replacing runtime failures with a generic
+fallback. `ToolExecutionError` preserves codes and envelopes; `returnEnvelope`
+returns envelopes instead. Caller signals are forwarded.
+
+Native SDK approval never replaces runtime approval. There is no automatic
+interruption/resume bridge. Malformed JSON may fail in the SDK before runtime
+invocation; A real SDK Runner loop with its local ScriptedModel is tested, tracing
+disabled. Hosted providers and model performance remain unverified. Only the tested SDK minor ranges are declared as peers for both new
+adapters. Other versions require validation before expanding compatibility.

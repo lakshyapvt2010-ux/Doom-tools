@@ -10,7 +10,7 @@ Per-tool platform matrix (PRD sections 14 and 22). "CI" means the workflow runs 
 | --- | --- | --- | --- | --- |
 | core, runtime, security, CLI | tested locally and CI | CI | untested | Pure Node. |
 | adapter-mcp (stdio and Streamable HTTP), adapter-vercel | tested locally and CI | CI | untested | HTTP binds to loopback by default. |
-| mcp-client, testing | tested locally and CI | CI | untested | MCP client tested with an in-memory transport only. |
+| mcp-client, testing | tested locally and CI | CI | untested | Later local tests also cover real stdio spawn and HTTP connection; those changes await CI. |
 | filesystem.* | tested locally and CI | CI | not supported at P0 | Path and symlink semantics differ on Windows; not evaluated. |
 | git.* | tested locally and CI | CI | not supported at P0 | Needs a host `git` binary. Not a sandbox. |
 | web.fetch | tested locally and CI | CI | untested | Uses `node:http`/`node:https`; no proxy support. |
@@ -27,7 +27,7 @@ CI runs Node 22, 24 and 26 on Ubuntu and macOS with read-only repository permiss
 - Server dependency: `@modelcontextprotocol/sdk` ^1.32.2, with the resolved version locked in `pnpm-lock.yaml`.
 - Shipped transports: stdio and Streamable HTTP (`serveMcpHttp`, `agentic-tools serve --http`; see docs/adapters.md). Integration tests use an in-memory transport, and HTTP tests use the real SDK client over a loopback socket.
 - Form elicitation accept/deny and caller cancellation are covered. No named desktop client has been certified.
-- The outbound MCP client (`@agentic-tools/mcp-client`) registers external tools as untrusted; it has been tested only against an in-memory transport, not stdio or HTTP server launching.
+- The outbound MCP client (`@agentic-tools/mcp-client`) registers external tools as untrusted; local tests cover in-memory, stdio spawn and Streamable HTTP; launching changes await the next CI run.
 
 | Client capability | Behavior |
 | --- | --- |
@@ -44,4 +44,4 @@ Pass `wrapSchema: jsonSchema` from `ai` v5. Provider naming rules differ, so use
 
 The SDK's `abortSignal` is forwarded to the runtime. Failure codes remain on `ToolExecutionError.result`, or in the full envelope with `returnEnvelope: true`.
 
-Other SDK majors, hosted providers and live-model task quality are not certified. LangChain/LangGraph and OpenAI Agents adapters remain P1 work.
+Other SDK majors, hosted providers and live-model task quality are not certified. LangChain core 1.5.0 and OpenAI Agents 0.22.0 adapters are locally tested through actual SDK tool invocation. LangGraph 1.7.5 ToolNode and an OpenAI Runner loop with local ScriptedModel are also tested; no hosted model is certified. See docs/adapters.md.
