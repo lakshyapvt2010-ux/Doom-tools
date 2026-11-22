@@ -58,7 +58,7 @@ export interface ConnectedMcpTools {
   skipped: { name: string; reason: string }[];
 }
 
-const NAME_RE = /^[A-Za-z0-9_-]{1,64}$/;
+const NAME_RE = /^[A-Za-z0-9_.-]{1,64}$/;
 const PREFIX_RE = /^[A-Za-z0-9_-]{1,32}$/;
 const SIDE_ORDER = ["read", "write", "external", "destructive"] as const;
 
@@ -184,3 +184,6 @@ function buildTool(
   };
   return def;
 }
+
+export { launchMcpServer } from "./connect.js";
+export type { LaunchedMcpServer, McpHttpServer, McpServerTarget, McpStdioServer } from "./connect.js";

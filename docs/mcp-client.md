@@ -14,3 +14,28 @@ Trust rules enforced here and by the runtime:
 - Runtime selection (`select`) and input validation against the remote schema apply as for any tool.
 
 Limits: this package does not spawn servers or open transports. The host creates the SDK client, so host-mode stdio servers run with host privileges and `network` policy cannot constrain them. Tool lists are read once at connect time; there is no live `tools/list_changed` handling. Prompt injection in results is labeled, not prevented.
+
+## Launching a server (`launchMcpServer`, P1)
+
+```js
+import { launchMcpServer } from "@agentic-tools/mcp-client";
+
+// stdio: spawn a local server process (no shell; minimal default environment)
+const local = await launchMcpServer(
+  { transport: "stdio", command: "node", args: ["server.mjs"] },
+  { prefix: "fx" }
+);
+
+// Streamable HTTP: connect to a remote endpoint, optional bearer token
+const remote = await launchMcpServer(
+  { transport: "http", url: "http://127.0.0.1:8787/mcp", authToken: process.env.MCP_TOKEN },
+  { prefix: "up" }
+);
+
+toolkit.register(local.tools);
+await local.close();
+```
+
+The trust rules do not change: every registered tool is still external/high (unless the host narrows with `declare`), still needs the `mcp.call` capability, and still goes through approval, selection and audit. Choosing which server to spawn or connect to is the host's trust decision, and this helper does not relax it. Remote names containing dots now register (previously skipped), so a toolkit can wrap another Agentic Tools MCP server: the policy-proxy composition from PRD section 20 question 2 works end to end, and is covered by a test.
+
+Limits: stdio spawns with the SDK's minimal default environment plus any `env` you pass; stderr is piped. HTTP supports a bearer token only; TLS and certificate handling are the platform fetch defaults. No OAuth discovery, no reconnect/resume logic, no list_changed handling.

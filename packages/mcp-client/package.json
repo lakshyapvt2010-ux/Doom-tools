@@ -31,6 +31,7 @@
     "@types/node": "^22.9.0",
     "typescript": "^5.6.3",
     "@agentic-tools/runtime": "workspace:*",
-    "@agentic-tools/security": "workspace:*"
+    "@agentic-tools/security": "workspace:*",
+    "@agentic-tools/adapter-mcp": "workspace:*"
   }
 }

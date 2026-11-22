@@ -86,3 +86,7 @@ docs/competitive-review.md is a dated (November 22, 2026) source-grounded landsc
 Fresh `git clone`, `pnpm install --frozen-lockfile`, build, strict typecheck and the full suite pass from a clean checkout on Linux Node 22: 171 tests, 0 fail. Both earlier examples and the new data-assistant example run from that checkout, and the CLI (help, validate, tools list) works. Note: the pnpm store cache on this machine was warm, so dependency resolution was not exercised from an empty cache; CI does that on every push.
 
 New example `examples/data-assistant`: seeds a SQLite file, runs a parameterized read through the policy-granted sqlite.read capability, shows a rejected DELETE and a filesystem listing. No model or API key.
+
+## MCP client transports (stdio and Streamable HTTP)
+
+`launchMcpServer` closes the gap where `connectMcpTools` needed an already-connected client. It spawns a stdio server process (no shell, minimal environment) or connects to a Streamable HTTP endpoint with an optional bearer token, then registers the remote tools under the same untrusted rules. 6 new tests: real stdio spawn via the repo's own adapter fixture, fail-closed policy without mcp.call, HTTP with token required/enforced, rejection of non-http URLs and unknown transports, and dotted remote names (needed to wrap another Agentic Tools server, the section-20 proxy composition). One behavior change: remote tool names containing dots now register instead of being skipped as invalid.
