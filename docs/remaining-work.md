@@ -32,8 +32,10 @@ a roadmap, not an instruction to build every integration it lists.
   skip when server binaries are absent; a green job may therefore omit them.
 - Named desktop MCP clients and hosted model behavior remain untested. Local
   SDK mock/scripted models validate execution mechanics, not autonomous quality.
-- Fresh checkout, empty-cache dependency installation and five examples pass
-  locally. No external developer has demonstrated the section-18 first-use gate.
+- A fresh source checkout passes frozen-lockfile installation from a cached
+  store, build/typecheck, all264 Linux Node22 tests, five examples and CLI smoke.
+  The earlier empty-cache install had218 tests; it is separate evidence. No
+  external developer has demonstrated the section-18 first-use gate.
 - The competitive desk review is complete, but the 5-10 developer conversations,
   demand evidence and go/no-go decision remain open. No outreach was performed.
 - Independent security review, release provenance/package checks, license and

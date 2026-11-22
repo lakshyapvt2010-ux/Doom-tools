@@ -4,7 +4,7 @@ This is a P0 prototype with partial P1/P2 extensions for review, aligned to the 
 
 ## Current local checkpoint
 
-The current code checkpoint has **263 passing tests on each of Linux Node
+The current code checkpoint has **264 passing tests on each of Linux Node
 22.23.5, 24.22.3 and 26.13.1**, with zero failures, cancellations or skips. Build
 and strict typecheck pass. The PostgreSQL cases use a real throwaway local cluster.
 These newer envelope, snapshot, deferred-resume and native-framework bridge
@@ -17,6 +17,13 @@ remote CI run 10 must be checked separately. The one temporary repository-only
 push token was revoked and an authenticated request subsequently returned401.
 No new token was created for the later local commits. No publication, deployment,
 spending or outreach occurred.
+
+A new source-only checkout of code checkpoint bbed69e passed frozen-lockfile
+installation from the existing local dependency store, build, strict typecheck
+and264 tests on Linux Node22, without skips. All five examples and CLI
+doctor/config validation/token listing passed from that fresh checkout. This
+latest install reused cached dependencies; the older empty-cache result below
+is a separate check. No external developer first-use result is claimed.
 
 Before the mapped-IPv6 fix, a fresh source checkout with an empty pnpm store
 downloaded all155 dependencies and passed build/typecheck plus218 tests on the
