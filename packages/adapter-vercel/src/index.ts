@@ -24,7 +24,7 @@ export interface VercelLikeTool {
   description: string;
   /** Raw JSON Schema, or whatever `wrapSchema` returned. */
   inputSchema: unknown;
-  execute(args: unknown): Promise<unknown>;
+  execute(args: unknown, options?: { abortSignal?: AbortSignal }): Promise<unknown>;
 }
 
 /** Error thrown for failed tool calls; carries the stable error code. */
@@ -44,6 +44,9 @@ export class ToolExecutionError extends Error {
 }
 
 export interface ToVercelAIOptions {
+  /** Map canonical names to provider-safe keys, e.g. dots to underscores.
+   * Collisions fail before any tools are exposed. Runtime identity is unchanged. */
+  nameForTool?: (canonicalName: string) => string;
   /**
    * Wrap each JSON Schema for the target AI SDK version, e.g.
    * `jsonSchema` from the `ai` package (v5). Default: pass through.
@@ -62,16 +65,20 @@ export function toVercelAI(
   toolkit: Toolkit,
   options: ToVercelAIOptions = {}
 ): Record<string, VercelLikeTool> {
-  const out: Record<string, VercelLikeTool> = {};
+  const out: Record<string, VercelLikeTool> = Object.create(null) as Record<string, VercelLikeTool>;
   for (const tool of toolkit.listTools()) {
+    const exposedName = options.nameForTool?.(tool.name) ?? tool.name;
+    if (!exposedName || Object.hasOwn(out, exposedName)) {
+      throw new Error("Framework tool names must be non-empty and unique after mapping.");
+    }
     const schema = options.wrapSchema
       ? options.wrapSchema(tool.inputSchema)
       : tool.inputSchema;
-    out[tool.name] = {
+    out[exposedName] = {
       description: tool.description,
       inputSchema: schema,
-      async execute(args: unknown): Promise<unknown> {
-        const result = await toolkit.invoke(tool.name, args ?? {});
+      async execute(args: unknown, executionOptions?: { abortSignal?: AbortSignal }): Promise<unknown> {
+        const result = await toolkit.invoke(tool.name, args ?? {}, { signal: executionOptions?.abortSignal });
         if (result.status === "error" && !options.returnEnvelope) {
           throw new ToolExecutionError(tool.name, result);
         }

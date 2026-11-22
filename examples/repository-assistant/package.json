@@ -1,0 +1,13 @@
+{
+  "name": "@agentic-tools/example-repository-assistant",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node index.mjs" },
+  "dependencies": {
+    "@agentic-tools/runtime": "workspace:*",
+    "@agentic-tools/filesystem": "workspace:*",
+    "@agentic-tools/git": "workspace:*"
+  }
+}

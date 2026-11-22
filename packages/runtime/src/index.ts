@@ -14,4 +14,6 @@ export { narrowSelection } from "./state.js";
 export type { SelectionCriteria, ToolkitState } from "./state.js";
 export { TraceCollector } from "./trace.js";
 export type { TraceRecord } from "./trace.js";
+export { MetricsCollector } from "./metrics.js";
+export type { MetricRecord } from "./metrics.js";
 export { scopeServices } from "./services.js";

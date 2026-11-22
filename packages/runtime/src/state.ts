@@ -14,6 +14,7 @@ import type {
 } from "@agentic-tools/security";
 import type { ToolRegistry } from "./registry.js";
 import type { TraceCollector } from "./trace.js";
+import type { MetricsCollector } from "./metrics.js";
 
 export interface ToolkitState {
   workspace: string;
@@ -28,6 +29,7 @@ export interface ToolkitState {
   services: Record<string, unknown>;
   logger?: Logger;
   traces: TraceCollector;
+  metrics: MetricsCollector;
 }
 
 export interface SelectionCriteria {

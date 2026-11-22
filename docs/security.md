@@ -56,6 +56,20 @@ prompts are not security boundaries (PRD 9).
 - **Audit (FR-010).** invocation start, policy decision, approval request/decision and
   invocation end, correlated by trace ID, without payloads by default.
 
+## Git host-process limits
+
+Git checks its actual repository root before each command, so an enclosing repository
+outside the workspace is denied. The child environment does not inherit `GIT_DIR`,
+`GIT_WORK_TREE` or arbitrary secret-bearing variables. Hooks, signing, pagers and
+filesystem monitors are disabled; diff disables external diff/textconv commands.
+These choices intentionally differ from interactive Git and produce unsigned commits.
+Native Git, repository configuration, filter drivers and host filesystems are still not
+isolated. Use trusted repositories. A container backend is required for hostile code.
+
+Caller cancellation is forwarded to Git's child process. See [observability.md](observability.md)
+for pending-approval cancellation, trace/metric retention and optional audit-sink failure behavior.
+
+
 ## Prompt injection
 
 A runtime cannot solve prompt injection. This product limits blast radius: policy is

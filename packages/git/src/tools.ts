@@ -91,7 +91,7 @@ function createDiff(): ToolDefinition {
     classify: readClassify("git.read"),
     execute: async (input: { path?: string; staged?: boolean; ref?: string; pathspec?: string[] }, ctx) => {
       const repo = resolveRepo(ctx, input.path);
-      const args = ["diff"];
+      const args = ["diff", "--no-ext-diff", "--no-textconv"];
       if (input.staged) args.push("--cached");
       if (input.ref !== undefined) {
         assertSafeRef(input.ref);

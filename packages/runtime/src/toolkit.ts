@@ -33,6 +33,7 @@ import {
   type ToolkitState
 } from "./state.js";
 import { TraceCollector, type TraceRecord } from "./trace.js";
+import { MetricsCollector, type MetricRecord } from "./metrics.js";
 
 export interface ToolkitOptions {
   /** Single source of truth for the filesystem boundary. */
@@ -77,6 +78,8 @@ export interface Toolkit {
   revokeRememberedApprovals(): void;
   auditEvents(): AuditEvent[];
   traceRecords(): TraceRecord[];
+  /** Bounded local aggregate counters, with no payloads or telemetry. */
+  metrics(): MetricRecord[];
   /** Internal state for adapters (same-process integrations only). */
   readonly _state: ToolkitState;
 }
@@ -124,6 +127,7 @@ export function createToolkit(options: ToolkitOptions): Toolkit {
     redactor: createRedactor({ secrets: policy.secrets }),
     services: options.services ?? {},
     traces: new TraceCollector(),
+    metrics: new MetricsCollector(),
     ...(options.logger !== undefined ? { logger: options.logger } : {})
   };
 
@@ -169,6 +173,9 @@ function toolkitFromState(state: ToolkitState): Toolkit {
     },
     traceRecords() {
       return state.traces.list();
+    },
+    metrics() {
+      return state.metrics.snapshot();
     }
   };
 }

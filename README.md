@@ -16,7 +16,7 @@ or framework exposes the tools.
   input, side-effect classification, capabilities and risk (`@agentic-tools/core`).
 - **A runtime that enforces the rules outside the model.** Input validation, per-invocation
   classification, policy evaluation, approvals, timeouts, redaction, output budgets, audit
-  and tracing (`@agentic-tools/runtime` + `@agentic-tools/security`). Tool descriptions and
+  and tracing, bounded local metrics and caller cancellation (`@agentic-tools/runtime` + `@agentic-tools/security`). Tool descriptions and
   prompts are never security boundaries.
 - **Selectable tools.** Workspace-scoped filesystem, Git essentials and trusted-host shell,
   each with minimal read-only defaults (`@agentic-tools/filesystem`, `/git`, `/bash`).
@@ -31,15 +31,19 @@ the OpenAI Agents SDK or MCP. It supplies capabilities those systems can invoke.
 
 ## Requirements
 
-- Node.js >= 20 (maintained LTS), macOS or Linux. Windows is not supported at P0.
+- Node.js 22, 24 or 26, macOS or Linux. Windows is not supported at P0. See the [compatibility matrix](docs/compatibility.md).
 - pnpm 9.15+ for the monorepo.
 
 ## Quickstart
 
+These packages are unpublished prototypes. Use this checkout and its workspace
+packages; proposed npm names are not a verified public installation source.
+
 ```bash
 pnpm install
 pnpm build
-node examples/coding-agent/index.mjs   # reference wiring, runs end to end
+node examples/coding-agent/index.mjs   # approval/selection wiring, no model required
+node examples/repository-assistant/index.mjs .  # read-only repository inspection
 ```
 
 Minimal use in your own project:
@@ -85,7 +89,7 @@ const result = await planning.invoke("filesystem.read", { path: "README.md" });
 | --- | --- |
 | `@agentic-tools/core` | Canonical contract, result envelope, `defineTool` / `defineZodTool` SDK. Zero dependencies. |
 | `@agentic-tools/security` | Policy engine, capability permissions, approval flow + approvers, redaction, audit. |
-| `@agentic-tools/runtime` | Invocation lifecycle, registry, selection enforcement, output shaping, tracing. |
+| `@agentic-tools/runtime` | Invocation lifecycle, registry, selection, output shaping, traces, local metrics and cancellation. |
 | `@agentic-tools/filesystem` | read, list, search, grep, diff (default); write, edit (opt-in). Workspace-confined. |
 | `@agentic-tools/git` | status, diff, log, branch (default); switch, add, reset, commit (opt-in). |
 | `@agentic-tools/bash` | Trusted-host shell. Host privileges, **no containment**; approval-gated by default. |
@@ -127,23 +131,29 @@ cancellation cleanup.
 pnpm install
 pnpm build       # all packages
 pnpm typecheck
-pnpm test        # 101 tests incl. the adversarial suite
+pnpm test        # unit, adversarial and real-SDK integration tests
 ```
 
-CI (`.github/workflows/ci.yml`) runs build, typecheck and tests on Node 20 and 22, ubuntu
-and macOS.
+CI (`.github/workflows/ci.yml`) runs build, typecheck and tests on Node 22, 24 and 26,
+Ubuntu and macOS. See [VALIDATION.md](VALIDATION.md) for measured local results and
+remaining release gates. The deterministic repository-task test uses real MCP and
+Vercel SDK execution with a local mock model, not a hosted provider.
 
 ## Honest scope
 
 Implemented at P0 (PRD 14.1): contract/SDK, runtime, policy/approvals/redaction/audit,
 filesystem/Git/bash tools, selection at all four levels, output budgets and truncation,
-tracing, CLI, MCP server (stdio), one framework adapter, adversarial suite, example.
+tracing, bounded local metrics, CLI, MCP server (stdio), one framework adapter,
+adversarial/integration tests, and coding/repository examples.
 Not implemented: container/remote sandbox backends, MCP client, Streamable HTTP transport,
 HTTP/web/database/browser tools, mock/replay, Windows support, additional adapters
 (P1+ per PRD 14.2-14.4). See [VALIDATION.md](VALIDATION.md) and
 [docs/compatibility.md](docs/compatibility.md).
 
 ## Documentation
+
+- [docs/observability.md](docs/observability.md): traces, local metrics, cancellation and retention limits
+- [docs/prd-alignment.md](docs/prd-alignment.md): this improvement pass mapped to PRD requirements
 
 - [docs/quickstart.md](docs/quickstart.md) — install to first invocation
 - [docs/security.md](docs/security.md) — trust modes and their real guarantees

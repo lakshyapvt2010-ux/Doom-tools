@@ -36,7 +36,7 @@ export function detectCapabilities(): CapabilityReport {
   const osPlatform = platform();
   const supportedOs = osPlatform === "darwin" || osPlatform === "linux";
   const nodeMajor = parseInt(process.versions.node.split(".")[0] ?? "0", 10);
-  const supportedNode = nodeMajor >= 20;
+  const supportedNode = [22, 24, 26].includes(nodeMajor);
 
   const binaries = [
     probeBinary("git", ["--version"]),
@@ -52,7 +52,7 @@ export function detectCapabilities(): CapabilityReport {
     );
   }
   if (!supportedNode) {
-    warnings.push(`Node.js ${process.versions.node} is below the supported LTS floor (>=20).`);
+    warnings.push(`Node.js ${process.versions.node} is outside the supported LTS matrix (22, 24, 26). Use a declared supported major.`);
   }
   if (docker?.available !== true) {
     warnings.push(

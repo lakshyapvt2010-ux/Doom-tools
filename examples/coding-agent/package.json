@@ -5,13 +5,12 @@
   "description": "Reference coding-agent wiring for the Agentic Tools quickstart.",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "@agentic-tools/adapter-mcp": "workspace:*",
     "@agentic-tools/adapter-vercel": "workspace:*",
     "@agentic-tools/bash": "workspace:*",
-    "@agentic-tools/cli": "workspace:*",
     "@agentic-tools/core": "workspace:*",
     "@agentic-tools/filesystem": "workspace:*",
     "@agentic-tools/git": "workspace:*",

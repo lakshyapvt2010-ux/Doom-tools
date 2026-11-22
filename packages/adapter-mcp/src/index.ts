@@ -64,7 +64,7 @@ export function toolNeedsApproval(toolkit: Toolkit, tool: ToolDefinition): boole
 export function mcpElicitationApprover(server: Server): Approver {
   return {
     name: "mcp-elicitation",
-    async approve(request: ApprovalRequest) {
+    async approve(request: ApprovalRequest, context: { signal?: AbortSignal }) {
       if (!clientSupportsElicitation(server)) return null;
       try {
         const result = await server.elicitInput({
@@ -80,7 +80,7 @@ export function mcpElicitationApprover(server: Server): Approver {
             },
             required: ["approve"]
           }
-        });
+        }, { signal: context.signal });
         if (result.action !== "accept") {
           return { outcome: "deny", reason: `elicitation ${result.action}`, decidedBy: "mcp-elicitation" };
         }
@@ -138,7 +138,7 @@ export function createMcpServer(toolkit: Toolkit, options: ServeMcpOptions = {})
     }))
   }));
 
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  server.setRequestHandler(CallToolRequestSchema, async (request, context) => {
     const { name, arguments: args } = request.params;
     // Server-level selection enforcement (PRD 8.6, FR-012/FR-019): a tool
     // not exposed to THIS client is rejected with permission_denied even
@@ -146,18 +146,17 @@ export function createMcpServer(toolkit: Toolkit, options: ServeMcpOptions = {})
     // only control.
     const exposed = exposedTools(toolkit, server).some((t) => t.name === name);
     if (!exposed) {
-      return toMcpCallResult({
-        status: "error",
-        tool: { name, version: "unknown" },
-        error: {
-          code: "permission_denied",
-          message: `Tool "${name}" is not exposed to this client.`
-        }
-      });
+      // Route even hidden/unknown calls through the runtime so denied calls
+      // receive the same trace, audit, metrics, redaction and timing coverage.
+      return toMcpCallResult(await toolkit.select({ name: [] }).invoke(name, args ?? {}, {
+        signal: context.signal
+      }));
     }
     // The elicitation approver goes first so the client user is asked
     // directly; toolkit approvers (CLI, queue, callback) are the fallback.
     const result = await toolkit.invoke(name, args ?? {}, {
+      signal: context.signal,
+      excludeStdioApprovers: true,
       extraApprovers: [mcpElicitationApprover(server)]
     });
     return toMcpCallResult(result);

@@ -189,13 +189,16 @@ export class ApprovalManager {
     context: { signal?: AbortSignal } = {}
   ): Promise<ApprovalDecision | null> {
     for (const approver of approvers) {
+      if (context.signal?.aborted || Date.now() >= request.expiresAt) return null;
       let decision: ApprovalDecision | null = null;
       try {
         decision = await this.presentTo(approver, request, context);
       } catch {
         decision = null; // an approver error never approves
       }
-      if (decision === null) continue;
+      if (context.signal?.aborted || Date.now() >= request.expiresAt) return null;
+      if (!decision || typeof decision !== "object" ||
+          (decision.outcome !== "allow" && decision.outcome !== "deny")) continue;
       if (decision.outcome === "deny") return decision;
       if (
         decision.scope === "remember" &&
@@ -215,33 +218,28 @@ export class ApprovalManager {
     context: { signal?: AbortSignal }
   ): Promise<ApprovalDecision | null> {
     return new Promise((resolvePromise) => {
-      const entry: PendingEntry = { request, resolve: resolvePromise };
-      this.pending.set(request.id, entry);
-      const msLeft = request.expiresAt - Date.now();
-      const timer = setTimeout(() => {
-        this.pending.delete(request.id);
-        resolvePromise(null); // expired
-      }, Math.max(0, msLeft));
-      const onAbort = () => {
-        clearTimeout(timer);
-        this.pending.delete(request.id);
+      if (context.signal?.aborted || Date.now() >= request.expiresAt) {
         resolvePromise(null);
+        return;
+      }
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const settle = (decision: ApprovalDecision | null) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        context.signal?.removeEventListener("abort", onAbort);
+        this.pending.delete(request.id);
+        resolvePromise(context.signal?.aborted || Date.now() >= request.expiresAt ? null : decision);
       };
+      const onAbort = () => settle(null);
+      this.pending.set(request.id, { request, resolve: settle });
+      timer = setTimeout(() => settle(null), Math.max(0, request.expiresAt - Date.now()));
       context.signal?.addEventListener("abort", onAbort, { once: true });
-      approver
-        .approve(request, context)
-        .then((decision) => {
-          clearTimeout(timer);
-          context.signal?.removeEventListener("abort", onAbort);
-          this.pending.delete(request.id);
-          resolvePromise(decision);
-        })
-        .catch(() => {
-          clearTimeout(timer);
-          context.signal?.removeEventListener("abort", onAbort);
-          this.pending.delete(request.id);
-          resolvePromise(null);
-        });
+      Promise.resolve().then(() => {
+        if (context.signal?.aborted) return null;
+        return approver.approve(request, context);
+      }).then(settle, () => settle(null));
     });
   }
 

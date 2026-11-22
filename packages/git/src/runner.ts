@@ -1,11 +1,3 @@
-/**
- * Git CLI runner with workspace containment (PRD 13.4, 14.1).
- *
- * The git binary runs against a repository path that must resolve inside
- * the policy workspace. User-supplied refs and paths are validated so
- * they can never be interpreted as flags; pathspecs follow "--".
- */
-
 import { execFile } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
@@ -13,7 +5,6 @@ import { ToolError, type ToolContext } from "@agentic-tools/core";
 
 const GIT_TIMEOUT_MS = 30_000;
 const GIT_MAX_BUFFER = 8 * 1024 * 1024;
-
 function canonicalize(target: string): string {
   let current = target;
   const remainder: string[] = [];
@@ -23,88 +14,73 @@ function canonicalize(target: string): string {
     remainder.unshift(basename(current));
     current = parent;
   }
-  const realBase = existsSync(current) ? realpathSync(current) : current;
-  return remainder.length > 0 ? join(realBase, ...remainder) : realBase;
+  const base = existsSync(current) ? realpathSync(current) : current;
+  return remainder.length ? join(base, ...remainder) : base;
 }
-
 function isWithin(root: string, candidate: string): boolean {
   return candidate === root || candidate.startsWith(root.endsWith(sep) ? root : root + sep);
 }
-
-/** Resolve a repository directory inside the workspace, or throw. */
 export function resolveRepo(ctx: ToolContext, inputPath?: string): string {
-  const joined =
-    inputPath !== undefined && isAbsolute(inputPath)
-      ? resolve(inputPath)
-      : resolve(ctx.workspace, inputPath ?? ".");
-  const canonical = canonicalize(joined);
+  const target = inputPath !== undefined && isAbsolute(inputPath)
+    ? resolve(inputPath) : resolve(ctx.workspace, inputPath ?? ".");
+  const canonical = canonicalize(target);
   if (!isWithin(realpathSync(ctx.workspace), canonical)) {
-    throw new ToolError(
-      "permission_denied",
-      `Repository path "${inputPath ?? "."}" resolves outside the workspace root.`
-    );
+    throw new ToolError("permission_denied", `Repository path "${inputPath ?? "."}" resolves outside the workspace root.`);
   }
   return canonical;
 }
-
 const SAFE_REF = /^(?!-)[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/;
-
-/** Refs and branch names must never be parsed as options. */
 export function assertSafeRef(ref: string, what = "ref"): void {
-  if (!SAFE_REF.test(ref) || ref.includes("..")) {
-    throw new ToolError("validation", `Invalid ${what}: ${JSON.stringify(ref)}.`);
-  }
+  if (!SAFE_REF.test(ref) || ref.includes("..")) throw new ToolError("validation", `Invalid ${what}: ${JSON.stringify(ref)}.`);
 }
-
-/** Pathspecs are validated for containment and always follow "--". */
-export function assertSafePathspec(workspaceRoot: string, repo: string, p: string): string {
-  if (p.startsWith("-")) {
-    throw new ToolError("validation", `Pathspec must not start with "-": ${JSON.stringify(p)}.`);
+export function assertSafePathspec(workspaceRoot: string, repo: string, path: string): string {
+  if (path.startsWith("-")) throw new ToolError("validation", `Pathspec must not start with "-": ${JSON.stringify(path)}.`);
+  const target = isAbsolute(path) ? resolve(path) : resolve(repo, path);
+  if (!isWithin(realpathSync(workspaceRoot), canonicalize(target))) {
+    throw new ToolError("permission_denied", `Pathspec "${path}" resolves outside the workspace.`);
   }
-  const joined = isAbsolute(p) ? resolve(p) : resolve(repo, p);
-  const canonical = canonicalize(joined);
-  if (!isWithin(realpathSync(workspaceRoot), canonical)) {
-    throw new ToolError("permission_denied", `Pathspec "${p}" resolves outside the workspace.`);
+  return path;
+}
+export interface GitResult { stdout: string; stderr: string; exitCode: number; }
+
+/** Git is a host binary, not an isolation boundary. Do not inherit GIT_DIR,
+ * GIT_WORK_TREE or secret-bearing environment variables from the host. Hooks,
+ * pagers and filesystem monitors are disabled because tool permission to run
+ * Git is not permission to execute arbitrary repository-configured programs. */
+function gitEnvironment(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {};
+  for (const key of ["PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "LC_CTYPE", "TMPDIR", "TMP", "TEMP",
+    "GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"]) {
+    if (process.env[key] !== undefined) env[key] = process.env[key];
   }
-  return p;
+  return { ...env, GIT_TERMINAL_PROMPT: "0", GIT_PAGER: "cat" };
 }
-
-export interface GitResult {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-}
-
-export async function runGit(ctx: ToolContext, repo: string, args: string[]): Promise<GitResult> {
+async function executeGit(ctx: ToolContext, repo: string, args: string[]): Promise<GitResult> {
+  if (ctx.signal.aborted) throw new ToolError("cancelled", "Git invocation cancelled.");
+  const remaining = ctx.deadline === undefined ? GIT_TIMEOUT_MS : ctx.deadline - Date.now();
+  if (remaining <= 0) throw new ToolError("timeout", "Git invocation deadline expired.");
   return new Promise((resolvePromise, reject) => {
-    execFile(
-      "git",
-      ["-C", repo, ...args],
-      {
-        timeout: GIT_TIMEOUT_MS,
-        maxBuffer: GIT_MAX_BUFFER,
-        env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }
-      },
-      (error, stdout, stderr) => {
-        if (error && (error as NodeJS.ErrnoException & { killed?: boolean }).killed) {
-          reject(new ToolError("timeout", `git ${args[0] ?? ""} timed out.`));
-          return;
-        }
-        const exitCode =
-          error && typeof (error as { code?: unknown }).code === "number"
-            ? ((error as { code: number }).code)
-            : 0;
-        if (exitCode !== 0) {
-          reject(
-            new ToolError(
-              "execution_error",
-              `git ${args[0] ?? ""} failed (exit ${exitCode}): ${String(stderr).slice(0, 500)}`
-            )
-          );
-          return;
-        }
-        resolvePromise({ stdout: String(stdout), stderr: String(stderr), exitCode });
+    execFile("git", ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "commit.gpgSign=false", "-C", repo, ...args], {
+      timeout: Math.min(GIT_TIMEOUT_MS, remaining), maxBuffer: GIT_MAX_BUFFER,
+      signal: ctx.signal, encoding: "utf8", env: gitEnvironment()
+    }, (error, stdout, stderr) => {
+      if (ctx.signal.aborted) { reject(new ToolError("cancelled", "Git invocation cancelled.")); return; }
+      if (error && (error as { killed?: boolean }).killed) { reject(new ToolError("timeout", `git ${args[0]} timed out.`)); return; }
+      if (error) {
+        reject(new ToolError("execution_error", `git ${args[0]} failed: ${String(stderr).slice(0, 500) || "Git could not start."}`));
+        return;
       }
-    );
+      resolvePromise({ stdout: String(stdout), stderr: String(stderr), exitCode: 0 });
+    });
   });
+}
+export async function runGit(ctx: ToolContext, repo: string, args: string[]): Promise<GitResult> {
+  // `git -C child` otherwise discovers an enclosing repository outside the
+  // workspace and can commit unrelated staged files. Check Git's actual root.
+  const discovery = await executeGit(ctx, repo, ["rev-parse", "--show-toplevel"]);
+  const root = canonicalize(discovery.stdout.replace(/\r?\n$/, ""));
+  if (!isWithin(realpathSync(ctx.workspace), root)) {
+    throw new ToolError("permission_denied", "Git discovered a repository root outside the configured workspace. Choose the repository root as the workspace explicitly.");
+  }
+  return executeGit(ctx, repo, args);
 }

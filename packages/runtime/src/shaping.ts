@@ -16,8 +16,10 @@ function byteLength(value: unknown): number {
 function truncateUtf8(text: string, maxBytes: number): { text: string; omitted: number } {
   const buf = Buffer.from(text, "utf8");
   if (buf.length <= maxBytes) return { text, omitted: 0 };
-  const sliced = buf.subarray(0, maxBytes).toString("utf8");
-  return { text: sliced, omitted: buf.length - Buffer.byteLength(sliced, "utf8") };
+  let end = Math.max(0, Math.floor(maxBytes));
+  // Back off an incomplete UTF-8 code point instead of introducing U+FFFD.
+  while (end > 0 && ((buf[end] ?? 0) & 0xc0) === 0x80) end--;
+  return { text: buf.subarray(0, end).toString("utf8"), omitted: buf.length - end };
 }
 
 const CONTINUATION_HINT =
@@ -64,7 +66,9 @@ export function shapeResult<T>(result: ToolResult<T>, maxOutputBytes: number): T
     };
   }
 
-  // { items, nextCursor } paginated shape: cut items, preserve the cursor field.
+  // A provider cursor points past its ORIGINAL page, not the shortened
+  // prefix. Never return that cursor after cutting items, which would skip
+  // omitted entries. Retry the same input cursor with a smaller page size.
   if (
     result.output !== null &&
     typeof result.output === "object" &&
@@ -78,10 +82,12 @@ export function shapeResult<T>(result: ToolResult<T>, maxOutputBytes: number): T
       if (byteLength(candidate) > maxOutputBytes) break;
       kept = i + 1;
     }
+    const { nextCursor: _nextCursor, ...page } = obj;
     return {
       ...result,
-      output: { ...obj, items: items.slice(0, kept) } as T,
-      truncation: marker("entries", items.length - kept, CONTINUATION_HINT)
+      output: { ...page, items: items.slice(0, kept) } as T,
+      truncation: marker("entries", items.length - kept,
+        "This page was shortened and its nextCursor was removed to avoid skipping omitted entries. Re-invoke with the SAME input cursor and a smaller limit, then use that complete page's nextCursor. If no item fits, raise the output budget.")
     };
   }
 

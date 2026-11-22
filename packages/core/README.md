@@ -1,7 +1,7 @@
 # @agentic-tools/core
 
 Canonical tool contract, result envelope and custom-tool SDK for Agentic Tools.
-Zero runtime dependencies. TypeScript-first, Node.js >= 20, ESM only.
+Zero runtime dependencies. TypeScript-first, Node.js >= 22, ESM only.
 
 This package implements the PRD (v0.2) sections:
 

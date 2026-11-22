@@ -12,7 +12,7 @@ export interface TraceRecord {
   durationMs: number;
   status: "success" | "error";
   errorCode?: string;
-  policyDecision: "allow" | "deny" | "approval";
+  policyDecision: "allow" | "deny" | "approval" | "not_evaluated";
   approvalOutcome?: "allow" | "deny" | "unavailable";
   metadata?: Record<string, unknown>;
 }
