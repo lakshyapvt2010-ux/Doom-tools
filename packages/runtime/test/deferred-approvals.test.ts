@@ -88,3 +88,12 @@ test("changed classification cannot inherit a prior input-only approval",async t
  const result=await kit.resumeApproval(requestId,{outcome:"allow"},{name:"test.deferred",input:{target:"one"}});
  assert.equal(result.status==="error"&&result.error.code,"permission_denied");assert.equal(calls(),0);
 });
+
+test("native approval preparation never executes ungated tools and shares runtime validation",async t=>{
+ const {kit,calls}=fixture(t);
+ assert.throws(()=>kit.prepareApproval("test.deferred",{target:1}),e=>e instanceof ToolError&&e.code==="validation");
+ const request=kit.prepareApproval("test.deferred",{target:"one"});assert.ok(request?.id);assert.equal(calls(),0);
+ kit._state.policy.approvals["test.deferred"]="never";
+ assert.equal(kit.prepareApproval("test.deferred",{target:"one"}),null);assert.equal(calls(),0);
+ assert.throws(()=>kit.select({name:[]}).prepareApproval("test.deferred",{target:"one"}),e=>e instanceof ToolError&&e.code==="permission_denied");
+});

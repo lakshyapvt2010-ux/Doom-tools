@@ -73,6 +73,33 @@ export function classifyInvocation(tool: ToolDefinition, input: unknown): Invoca
   }
 }
 
+/** Shared preparation for execution and native approval previews. No tool runs. */
+function scopedInvocation(state: ToolkitState, tool: ToolDefinition, input: unknown): InvocationClass {
+  const invocation = classifyInvocation(tool, input);
+  for (const cap of invocation.capabilities) {
+    if (typeof cap.path === "string") cap.path = canonicalizeCapabilityPath(state.policy.workspace, cap.path);
+  }
+  return invocation;
+}
+/** Create a deferred native-framework ticket without executing an allowed tool. */
+export function prepareApproval(state: ToolkitState, name: string, rawInput: unknown): ApprovalRequest | null {
+  const tool = state.registry.resolve(name);
+  if (!tool || !state.selected.has(name)) throw new ToolError("permission_denied", "Tool is not exposed to this toolkit.");
+  let input: unknown;
+  try { input = snapshotInput(rawInput); }
+  catch { throw new ToolError("validation", "Input must be plain JSON-compatible data."); }
+  try {
+    if (!validatorFor(tool)(input)) throw new Error();
+  } catch { throw new ToolError("validation", "Input did not match the registered schema."); }
+  const invocation = scopedInvocation(state, tool, input);
+  const decision = evaluatePolicy(state.policy, tool, invocation);
+  if (decision.kind === "deny") throw new ToolError("permission_denied", "Invocation is denied by policy.");
+  if (decision.kind !== "approval") return null;
+  const request = state.approvals.createRequest({name: tool.name, version: tool.version}, input, invocation, decision.rule, randomUUID());
+  state.deferredApprovals.add(request);
+  return state.deferredApprovals.list().find(r => r.id === request.id)!;
+}
+
 const noopLogger: Logger = { debug() {}, info() {}, warn() {}, error() {} };
 
 /** One terminal path handles sanitization, timing, traces, metrics and audit. */
@@ -156,10 +183,7 @@ export async function invokeTool(
     return finish(fail("validation", "The registered input schema could not be evaluated. Check the tool schema."));
   }
 
-  const invocation = classifyInvocation(tool, input);
-  for (const cap of invocation.capabilities) {
-    if (typeof cap.path === "string") cap.path = canonicalizeCapabilityPath(state.policy.workspace, cap.path);
-  }
+  const invocation = scopedInvocation(state, tool, input);
   let decision = evaluatePolicy(state.policy, tool, invocation);
   if (resumeBinding && (Date.now() >= resumeBinding.expiresAt ||
       approvalInputHash(toolRef, input, invocation) !== resumeBinding.inputHash ||

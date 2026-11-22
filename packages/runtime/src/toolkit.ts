@@ -29,7 +29,7 @@ import {
 import { DeferredApprovals } from "./deferred-approvals.js";
 import { snapshotInput } from "./input-snapshot.js";
 import { ToolRegistry } from "./registry.js";
-import { invokeTool, type InvokeOptions } from "./invoke.js";
+import { invokeTool, prepareApproval, type InvokeOptions } from "./invoke.js";
 import { toolFootprintTokens } from "./shaping.js";
 import {
   narrowSelection,
@@ -80,6 +80,8 @@ export interface Toolkit {
   /** Resolve a pending approval out of band (PRD 9.5). */
   resolveApproval(requestId: string, decision: ApprovalDecision): boolean;
   listPendingApprovals(): ReturnType<ApprovalManager["listPending"]>;
+  /** Prepare a native-framework approval ticket without invoking an allowed tool. */
+  prepareApproval(name: string, input: unknown): ReturnType<typeof prepareApproval>;
   /** Explicitly deferred calls are separate from currently waiting approvers. */
   listDeferredApprovals(): ReturnType<DeferredApprovals["list"]>;
   discardDeferredApproval(requestId: string): boolean;
@@ -178,6 +180,7 @@ function toolkitFromState(state: ToolkitState): Toolkit {
     listPendingApprovals() {
       return state.approvals.listPending();
     },
+    prepareApproval(name, input) { return prepareApproval(state, name, input); },
     listDeferredApprovals() { return state.deferredApprovals.list(); },
     discardDeferredApproval(requestId) { return state.deferredApprovals.discard(requestId); },
     async resumeApproval(requestId, decision, call) {

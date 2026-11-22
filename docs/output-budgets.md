@@ -77,7 +77,7 @@ warning. Both the reserved and actual rendering are checked for token caps.
 
 Boundaries: the whole-envelope cap counts compact runtime JSON, not SDK/provider
 messages, MCP's duplicated text/structured content, JSON-RPC headers, network
-framing or SDK-generated validation failures. Strict final-wire budgeting is
+framing or SDK/adapter-owned failures outside a runtime invocation. Strict final-wire budgeting is
 still open. In-memory tool/provider output is materialized before shaping; these
 limits do not prevent excessive upstream allocation and do not replace
 tool-specific pagination or response bounds.

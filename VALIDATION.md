@@ -224,4 +224,16 @@ approval requests, allow/resume once, refusal/malformed values, expiry and a for
 ID. The bridge injects released interrupt and uses runtime tickets, rather than
 catching/weakening approvals. Tickets remain process-local and expire; graph
 checkpoint persistence does not make approval tickets durable. OpenAI's native
-SDK bridge is still open. See docs/langgraph-approvals.md.
+SDK bridge was added in the subsequent local checkpoint. See docs/langgraph-approvals.md.
+
+
+## Native OpenAI Agents interruption (local follow-up)
+
+The explicit bridge uses SDK needsApproval and couples a host-approved SDK
+interruption to a single-use runtime ticket. A runtime preparation method does
+not execute ungated tools. Eight real Runner/ScriptedModel tests cover allow
+once, rejection, direct-SDK approval not granting runtime permission, reads
+executing once, expiry, changed input/policy and unknown/mismatched tickets.
+The bridge only supports process-local tickets and pinned SDK behavior. No
+hosted model, remote approval service or durable approval persistence was tested.
+See docs/openai-approvals.md.
