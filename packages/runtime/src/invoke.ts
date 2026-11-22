@@ -64,11 +64,12 @@ export function classifyInvocation(tool: ToolDefinition, input: unknown): Invoca
           typeof cap.name !== "string" ||
           (cap.path !== undefined && typeof cap.path !== "string"))) return bounds;
     const declared = new Set(tool.capabilities);
+    if (value.capabilities.some(cap => !declared.has(cap.name))) return bounds;
     return {
       sideEffect: clampIndex(SIDE_EFFECT_ORDER, value.sideEffect, bounds.sideEffect),
       risk: clampIndex(RISK_ORDER, value.risk, bounds.risk),
       // Copy before canonicalizing paths so classification objects are not mutated.
-      capabilities: value.capabilities.filter((cap) => declared.has(cap.name)).map((cap) => ({ ...cap }))
+      capabilities: value.capabilities.map((cap) => ({ ...cap }))
     };
   } catch {
     return bounds;
