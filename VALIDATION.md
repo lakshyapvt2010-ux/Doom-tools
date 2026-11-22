@@ -90,3 +90,11 @@ New example `examples/data-assistant`: seeds a SQLite file, runs a parameterized
 ## MCP client transports (stdio and Streamable HTTP)
 
 `launchMcpServer` closes the gap where `connectMcpTools` needed an already-connected client. It spawns a stdio server process (no shell, minimal environment) or connects to a Streamable HTTP endpoint with an optional bearer token, then registers the remote tools under the same untrusted rules. 6 new tests: real stdio spawn via the repo's own adapter fixture, fail-closed policy without mcp.call, HTTP with token required/enforced, rejection of non-http URLs and unknown transports, and dotted remote names (needed to wrap another Agentic Tools server, the section-20 proxy composition). One behavior change: remote tool names containing dots now register instead of being skipped as invalid.
+
+## Browser tools (P2)
+
+New `@agentic-tools/browser` package: navigate, dom, click, type, screenshot over a zero-dependency CDP driver for system Chrome headless. Every call needs an explicit `browser.control` grant; only http(s); private destinations refused by default; bounded untrusted output; 4 tests against a real headless Chrome and a local fixture page cover the full flow, fail-closed policy, scheme rejection and private-address refusal. Synthetic (not trusted-pipeline) input events, one shared tab, and a documented DNS-rebinding gap on navigation. See docs/browser.md. Requires a Chrome binary, present on the GitHub ubuntu/macos runners.
+
+## Audit retention bound
+
+The in-memory audit sink is now bounded at 10,000 events (oldest dropped, `dropped` counter exposed), closing the unbounded-retention limit noted above. 2 tests. Durable sinks are unchanged.

@@ -165,6 +165,7 @@ HTTP/web/database/browser tools, mock/replay, Windows support, additional adapte
 - [docs/testing.md](docs/testing.md) — mock, record and replay (FR-014)
 - [docs/mcp-client.md](docs/mcp-client.md) — external MCP servers as untrusted tools
 - [docs/web.md](docs/web.md) — policy-gated HTTP fetch
+- [docs/browser.md](docs/browser.md) — headless-Chrome browser tools (P2)
 - [docs/sqlite.md](docs/sqlite.md) — read-only SQLite queries
 - [docs/footprint.md](docs/footprint.md) — token-footprint regression gate
 - [docs/competitive-review.md](docs/competitive-review.md) — section 20 landscape review (interviews pending)

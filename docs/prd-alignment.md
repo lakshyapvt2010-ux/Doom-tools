@@ -25,6 +25,7 @@ Source: the product owner's supplied PRD v0.2, prepared November 9, 2026. The ap
 | Section 10.1, 14.2 (Streamable HTTP, P1) | Loopback-default HTTP transport, Origin/Host checks, bearer token, per-session servers | `packages/adapter-mcp/test/http.test.ts` (6 tests) |
 | Section 20 (competitive review) | Dated landscape review with sources; interviews and go/no-go still open | docs/competitive-review.md |
 | Sections 14, 22 (platform matrix) | Per-tool OS matrix | docs/compatibility.md |
+| Section 13 (browser row, P2); section 8.2 browser.control | Policy-gated headless-Chrome tools, zero-dependency CDP | `packages/browser/test/browser.test.ts` (4 tests) |
 | Section 17 | Runnable read-only repository assistant and observability/compatibility guides | Example smoke run, build/typecheck and integration tests |
 
 ## Deliberately not claimed
