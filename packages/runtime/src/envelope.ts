@@ -18,6 +18,11 @@ function suppressed(result: ToolResult, omitted: number): ToolResult {
   };
 }
 function fits(result: ToolResult, budget: ResultBudget, counter: (s: string) => number): boolean {
+  for (const value of [budget.maxResultBytes, budget.maxResultTokens]) {
+    if (value !== undefined && (!Number.isSafeInteger(value) || value < 1)) {
+      throw new ToolError("resource_limit", "Complete-result budgets must be positive safe integers.");
+    }
+  }
   // Reserve space for an audit-delivery warning before calling the sinks.
   // A sink that fails only on invocation.end must not overflow the final cap
   // or change the already-recorded terminal status.

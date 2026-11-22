@@ -79,3 +79,8 @@ test("oversized correlation identity fails before any tool can execute", async t
  await assert.rejects(()=>kit.invoke(ref.name,{}, {traceId:"x".repeat(10000)}),/cannot fit/);
  assert.equal(calls,0);
 });
+
+test("standalone whole-envelope shaping rejects invalid limits and hides tokenizer exceptions", () => {
+ for(const maxResultBytes of [NaN,Infinity,0,-1,1.5]) assert.throws(()=>boundResult(success(ref,"x"),{maxResultBytes}),/positive safe integers/);
+ assert.throws(()=>boundResult(success(ref,"x"),{maxResultBytes:1000,maxResultTokens:1000},()=>{throw Error("private host text");}),e=>e instanceof ToolError && e.message==="Complete-result token counter failed.");
+});

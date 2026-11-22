@@ -29,7 +29,7 @@ test("cycles, accessors and non-JSON objects reject before execution or approval
  let calls=0,approvals=0,getters=0;
  const kit=fixture(t,async()=>{calls++;return "bad";},{approvers:[{name:"fixture",approve:async()=>{approvals++;return {outcome:"allow"};}}]});
  const cycle:any={};cycle.self=cycle;
- for(const input of [cycle,{value:1n},{value:new Date()},Object.defineProperty({},"value",{enumerable:true,get(){getters++;return 1;}})]) {
+ for(const input of [cycle,{value:1n},{value:new Date()},{value:Infinity},{value:undefined},{value:Object.assign([1],{extra:"not-json"})},{value:new Array(2)},Object.defineProperty({},"value",{enumerable:true,get(){getters++;return 1;}})]) {
   const result=await kit.invoke("test.snapshot",input);
   assert.equal(result.status==="error"&&result.error.code,"validation");
  }

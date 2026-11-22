@@ -90,7 +90,7 @@ The runtime copies and deeply freezes plain JSON-compatible input before schema
 validation, classification or approval. Changing the caller's original object
 while a human decision is pending cannot change the executed command or resource.
 Tools receive that frozen copy. Cycles, accessors, non-finite numbers, functions,
-BigInt and non-plain objects are rejected with `validation`, before any approval
+BigInt, undefined values, sparse/extended arrays and non-plain objects are rejected with `validation`, before any approval
 or execution. This tightens the same-process API to the JSON tool contract;
 convert dates/classes to ordinary JSON data in host code first.
 
