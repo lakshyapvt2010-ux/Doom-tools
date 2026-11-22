@@ -22,6 +22,8 @@ Source: the product owner's supplied PRD v0.2, prepared November 9, 2026. The ap
 | Section 16; FR-019; section 8.6 | Token-footprint budget gate; git default set made statically read-only (`git.branches`) | `packages/adversarial/test/footprint.test.ts`, `packages/git/test/git.test.ts` |
 | Section 13 (SQLite read, P1) | Read-only confined SQLite query with explicit grant | `packages/sqlite/test/sqlite.test.ts` (8 tests) |
 | Section 10.1, 14.2 (Streamable HTTP, P1) | Loopback-default HTTP transport, Origin/Host checks, bearer token, per-session servers | `packages/adapter-mcp/test/http.test.ts` (6 tests) |
+| Section 20 (competitive review) | Dated landscape review with sources; interviews and go/no-go still open | docs/competitive-review.md |
+| Sections 14, 22 (platform matrix) | Per-tool OS matrix | docs/compatibility.md |
 | Section 17 | Runnable read-only repository assistant and observability/compatibility guides | Example smoke run, build/typecheck and integration tests |
 
 ## Deliberately not claimed

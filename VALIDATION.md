@@ -76,3 +76,7 @@ New `@agentic-tools/sqlite` package with `sqlite.query` (read-only, single state
 ## Streamable HTTP transport for the MCP server
 
 `serveMcpHttp` and `agentic-tools serve --http` add the P1 Streamable HTTP transport. Six tests with the real MCP SDK client cover list/call through the runtime, loopback default and refusal of an unauthenticated non-loopback bind, foreign Origin and Host rejection, bearer token enforcement, missing/unknown session, wrong path, oversize body and bad JSON rejection, and the session cap. The CLI was also smoke-tested against the coding-agent example config with an SDK client. Limits (no TLS, OAuth or rate limiting; no named desktop client) are in docs/adapters.md. The earlier note that only stdio ships is superseded.
+
+## Competitive review (section 20, first half)
+
+docs/competitive-review.md is a dated (November 22, 2026) source-grounded landscape review across the PRD's categories: agent SDK permission systems (Claude Agent SDK, OpenAI Agents SDK, Vercel AI SDK, LangGraph HITL), reference MCP servers, five MCP gateway/proxy projects (the closest overlap), guardrail layers (NeMo, Invariant, policy-as-code) and sandbox providers (E2B, Daytona). It answers the three review questions provisionally and records a candidate wedge statement. It is desk research only: the 5-10 developer conversations and the go/no-go decision remain undone, so the gate is NOT passed.

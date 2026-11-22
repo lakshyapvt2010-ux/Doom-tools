@@ -4,20 +4,28 @@
 
 The supported Node majors for this prototype are 22, 24 and 26 on macOS/Linux. Node 20 is end-of-life and is no longer in the supported matrix. This follows the [official Node release table](https://nodejs.org/en/about/previous-releases), checked November 22, 2026. Package engines require Node >=22; the CLI checks the declared major-version matrix rather than claiming every newer version is supported.
 
-| Component | Linux local verification | macOS | Windows |
-| --- | --- | --- | --- |
-| core, runtime, security, adapters, CLI | Node 22.23.5, 24.22.3, 26.13.1 | configured in CI; check workflow result | untested |
-| filesystem, Git | same Linux matrix | configured in CI | not at P0 |
-| trusted-host Bash | same Linux matrix | configured in CI | unsupported |
+Per-tool platform matrix (PRD sections 14 and 22). "CI" means the workflow runs it on Ubuntu and macOS for Node 22, 24 and 26; check the actual run result before calling a platform green. Last checked run: https://github.com/MRIARC-08/tch-/actions (run 9, all 6 jobs passed).
+
+| Tool or package | Linux | macOS | Windows | Notes |
+| --- | --- | --- | --- | --- |
+| core, runtime, security, CLI | tested locally and CI | CI | untested | Pure Node. |
+| adapter-mcp (stdio and Streamable HTTP), adapter-vercel | tested locally and CI | CI | untested | HTTP binds to loopback by default. |
+| mcp-client, testing | tested locally and CI | CI | untested | MCP client tested with an in-memory transport only. |
+| filesystem.* | tested locally and CI | CI | not supported at P0 | Path and symlink semantics differ on Windows; not evaluated. |
+| git.* | tested locally and CI | CI | not supported at P0 | Needs a host `git` binary. Not a sandbox. |
+| web.fetch | tested locally and CI | CI | untested | Uses `node:http`/`node:https`; no proxy support. |
+| sqlite.query | tested locally and CI | CI | untested | Needs `node:sqlite` (Node 22.5+ with no flag in the tested versions; experimental). |
+| bash.execute (trusted host) | tested locally and CI | CI | unsupported | Spawns `bash`. No containment on any platform. |
+| Container or OS isolation backend | not implemented | not implemented | not implemented | Requesting one must fail closed once a backend exists. |
 
 CI runs Node 22, 24 and 26 on Ubuntu and macOS with read-only repository permissions. A workflow definition is not proof that its current jobs passed.
 
 ## MCP
 
 - Server dependency: `@modelcontextprotocol/sdk` ^1.32.2, with the resolved version locked in `pnpm-lock.yaml`.
-- Shipped transport: stdio. Integration tests connect real SDK client/server objects using an in-memory transport.
+- Shipped transports: stdio and Streamable HTTP (`serveMcpHttp`, `agentic-tools serve --http`; see docs/adapters.md). Integration tests use an in-memory transport, and HTTP tests use the real SDK client over a loopback socket.
 - Form elicitation accept/deny and caller cancellation are covered. No named desktop client has been certified.
-- Streamable HTTP and outbound MCP client connections remain P1 work.
+- The outbound MCP client (`@agentic-tools/mcp-client`) registers external tools as untrusted; it has been tested only against an in-memory transport, not stdio or HTTP server launching.
 
 | Client capability | Behavior |
 | --- | --- |
