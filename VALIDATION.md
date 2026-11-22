@@ -72,3 +72,7 @@ A new `@agentic-tools/mcp-client` package registers tools from an external MCP s
 ## SQLite read tool
 
 New `@agentic-tools/sqlite` package with `sqlite.query` (read-only, single statement, workspace-confined file, explicit `sqlite.read` grant, capped untrusted output). 8 tests cover results, row cap, write/PRAGMA/ATTACH/multi-statement rejection with data unchanged, guard handling of literals and comments, outside-workspace and missing files, a non-database file, and denial without a grant. Uses experimental `node:sqlite`; synchronous queries cannot be interrupted. See docs/sqlite.md.
+
+## Streamable HTTP transport for the MCP server
+
+`serveMcpHttp` and `agentic-tools serve --http` add the P1 Streamable HTTP transport. Six tests with the real MCP SDK client cover list/call through the runtime, loopback default and refusal of an unauthenticated non-loopback bind, foreign Origin and Host rejection, bearer token enforcement, missing/unknown session, wrong path, oversize body and bad JSON rejection, and the session cap. The CLI was also smoke-tested against the coding-agent example config with an SDK client. Limits (no TLS, OAuth or rate limiting; no named desktop client) are in docs/adapters.md. The earlier note that only stdio ships is superseded.

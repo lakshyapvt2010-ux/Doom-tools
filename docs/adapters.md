@@ -49,3 +49,20 @@ const tools = toVercelAI(toolkit, {
 ## Compatibility
 
 See docs/compatibility.md for the client/version matrix and known limits.
+
+## Streamable HTTP (`serveMcpHttp`)
+
+```js
+import { serveMcpHttp } from "@agentic-tools/adapter-mcp";
+const handle = await serveMcpHttp(toolkit, { port: 8787 }); // http://127.0.0.1:8787/mcp
+await handle.close();
+```
+
+CLI: `agentic-tools serve --http [--host H] [--port N]`. Set the bearer token in `AGENTIC_TOOLS_MCP_TOKEN` (never a flag, so it stays out of process listings).
+
+- Binds to loopback by default. A non-loopback `host` is refused unless `authToken` (16+ characters) is set.
+- Host and Origin headers must be loopback or explicitly allowed (`allowedHosts`, `allowedOrigins`), which blocks DNS-rebinding from a browser page.
+- Each session gets its own MCP server, so one client's elicitation support never applies to another. Sessions are capped (default 32); bodies are capped (default 1 MiB).
+- Tool exposure, policy, approvals, audit and redaction are the same runtime paths as stdio. A tool that needs approval is hidden unless the client supports elicitation or an out-of-band approver exists.
+
+Limits: no TLS (use a reverse proxy for remote access), no OAuth, one shared bearer token, no rate limiting, in-memory sessions. Tested with the real MCP SDK client; no named desktop client or hosted model was exercised.

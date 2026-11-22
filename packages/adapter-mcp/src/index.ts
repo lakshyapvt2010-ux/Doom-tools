@@ -31,7 +31,7 @@ export interface ServeMcpOptions {
   /** Server identity reported to clients. */
   name?: string;
   version?: string;
-  /** Only "stdio" ships at P0 (Streamable HTTP is P1, PRD 14.2). */
+  /** stdio via serveMcp; Streamable HTTP via serveMcpHttp. */
   transport?: "stdio";
 }
 
@@ -175,3 +175,6 @@ export async function serveMcp(toolkit: Toolkit, options: ServeMcpOptions = {}):
   await server.connect(new StdioServerTransport());
   return server;
 }
+
+export { serveMcpHttp } from "./http.js";
+export type { McpHttpHandle, ServeMcpHttpOptions } from "./http.js";

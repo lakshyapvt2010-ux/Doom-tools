@@ -16,7 +16,7 @@ import {
   listQueuedApprovals,
   writeQueuedDecision
 } from "@agentic-tools/security";
-import { serveMcp } from "@agentic-tools/adapter-mcp";
+import { serveMcp, serveMcpHttp } from "@agentic-tools/adapter-mcp";
 import { loadToolkit, configWarnings } from "./config.js";
 import { detectCapabilities, renderReport } from "./doctor.js";
 
@@ -62,6 +62,9 @@ Commands:
   tools list [--tokens]               Exposed tools and token footprint
   validate [--config FILE]            Validate a config module
   serve [--config FILE] [--name N]    Start the MCP server (stdio)
+  serve --http [--host H] [--port N]  Start the MCP server over Streamable HTTP
+                                      (loopback by default; set AGENTIC_TOOLS_MCP_TOKEN for a bearer token,
+                                      required for a non-loopback host)
   approvals list [--queue DIR]        Pending approval requests
   approvals approve ID [--remember]   Allow a queued request
   approvals deny ID [--reason TEXT]   Deny a queued request
@@ -125,6 +128,29 @@ async function main(): Promise<number> {
       // Approvers that prompt on stdio (cliApprover) cannot present while
       // the stdio transport owns those streams; disable them for this
       // server so exposure decisions do not count them as out-of-band.
+      if (args.flags.has("http")) {
+        const token = process.env.AGENTIC_TOOLS_MCP_TOKEN;
+        const portFlag = flagString(args, "port");
+        if (portFlag !== undefined && !/^\d{1,5}$/.test(portFlag)) {
+          process.stderr.write("error: --port must be a number\n");
+          return 2;
+        }
+        const handle = await serveMcpHttp(toolkit, {
+          name: flagString(args, "name") ?? "agentic-tools",
+          host: flagString(args, "host") ?? "127.0.0.1",
+          port: portFlag === undefined ? 0 : Number(portFlag),
+          ...(token ? { authToken: token } : {})
+        });
+        process.stderr.write(
+          `agentic-tools MCP server (Streamable HTTP) exposing ${toolkit.listTools().length} tools at ${handle.url}${token ? " (bearer token required)" : " (loopback only, no token)"}\n`
+        );
+        await new Promise<void>((resolvePromise) => {
+          process.once("SIGINT", () => resolvePromise());
+          process.once("SIGTERM", () => resolvePromise());
+        });
+        await handle.close();
+        return 0;
+      }
       const stdioApprovers = toolkit._state.approvers.filter((a) => a.usesStdio === true);
       if (stdioApprovers.length > 0) {
         toolkit._state.approvers = toolkit._state.approvers.filter((a) => a.usesStdio !== true);
