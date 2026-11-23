@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { devNull } from "node:os";
 import { existsSync, realpathSync, lstatSync, readlinkSync } from "node:fs";
-import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ToolError, type ToolContext } from "@agentic-tools/core";
 
 const GIT_TIMEOUT_MS = 30_000;
@@ -33,7 +33,10 @@ function canonicalize(target: string, depth = 0): string {
 }
 
 function isWithin(root: string, candidate: string): boolean {
-  return candidate === root || candidate.startsWith(root.endsWith(sep) ? root : root + sep);
+  // Native relative handles Windows drive-letter/case normalization without
+  // confusing sibling prefixes or allowing a different drive.
+  const suffix = relative(root, candidate);
+  return suffix === "" || (!isAbsolute(suffix) && suffix !== ".." && !suffix.startsWith(".." + sep));
 }
 export function resolveRepo(ctx: ToolContext, inputPath?: string): string {
   const target = inputPath !== undefined && isAbsolute(inputPath)
