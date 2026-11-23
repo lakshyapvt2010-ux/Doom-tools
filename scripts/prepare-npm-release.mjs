@@ -1,4 +1,4 @@
-/** Build a single-install alpha artifact without publishing or choosing a license. */
+/** Build a single-install alpha artifact without publishing. */
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,7 +6,7 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const out=resolve(process.env.AGENTIC_RELEASE_DIR??'/tmp/agentic-release');
 const name=process.env.AGENTIC_RELEASE_NAME??'tch-tools';
 const version=process.env.AGENTIC_RELEASE_VERSION??'0.1.0-alpha.1';
-const license=process.env.AGENTIC_RELEASE_LICENSE??'UNLICENSED';
+const license=process.env.AGENTIC_RELEASE_LICENSE??'MIT';
 const packages=['core','security','runtime','filesystem','git','bash','web','sqlite','postgres','testing','mcp-client','adapter-mcp','adapter-vercel','adapter-langchain','adapter-openai-agents','cli'];
 rmSync(out,{recursive:true,force:true});mkdirSync(out,{recursive:true});
 for(const pkg of packages){

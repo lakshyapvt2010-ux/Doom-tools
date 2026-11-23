@@ -144,3 +144,8 @@ See `RELEASE-VALIDATION.md` for exact evidence and limits. The reproducible app
 is included in `examples/evaluator-app`; copy it outside the installed package
 and follow its README. Its optional AI SDK5 dependency has known advisories,
 is not bundled here, and should not be adopted for production without review.
+
+## License
+
+MIT. Copyright (c) 2026 Adarsh Chauhan. See `LICENSE` for permissions and terms.
+Dependencies retain their own licenses.
