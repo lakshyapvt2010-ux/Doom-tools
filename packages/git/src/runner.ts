@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { devNull } from "node:os";
 import { existsSync, realpathSync, lstatSync, readlinkSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { ToolError, type ToolContext } from "@agentic-tools/core";
@@ -64,6 +65,7 @@ export interface GitResult { stdout: string; stderr: string; exitCode: number; }
 function gitEnvironment(): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const key of ["PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "LC_CTYPE", "TMPDIR", "TMP", "TEMP",
+    "SystemRoot", "WINDIR", "COMSPEC", "PATHEXT", "USERPROFILE",
     "GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"]) {
     if (process.env[key] !== undefined) env[key] = process.env[key];
   }
@@ -74,7 +76,7 @@ async function executeGit(ctx: ToolContext, repo: string, args: string[]): Promi
   const remaining = ctx.deadline === undefined ? GIT_TIMEOUT_MS : ctx.deadline - Date.now();
   if (remaining <= 0) throw new ToolError("timeout", "Git invocation deadline expired.");
   return new Promise((resolvePromise, reject) => {
-    execFile("git", ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "commit.gpgSign=false", "-C", repo, ...args], {
+    execFile("git", ["-c", `core.hooksPath=${devNull}`, "-c", "core.fsmonitor=false", "-c", "commit.gpgSign=false", "-C", repo, ...args], {
       timeout: Math.min(GIT_TIMEOUT_MS, remaining), maxBuffer: GIT_MAX_BUFFER,
       signal: ctx.signal, encoding: "utf8", env: gitEnvironment()
     }, (error, stdout, stderr) => {

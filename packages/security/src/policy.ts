@@ -7,6 +7,7 @@
  * in runtime code outside the model (PRD 9).
  */
 
+import { isAbsolute, relative, sep } from "node:path";
 import type {
   CapabilityRequest,
   InvocationClass,
@@ -161,9 +162,8 @@ export function resolvePolicy(config: PolicyConfig): ResolvedPolicy {
 
 /** True when `candidate` equals or sits inside `root` (both resolved). */
 export function isPathWithin(root: string, candidate: string): boolean {
-  if (candidate === root) return true;
-  const sep = root.endsWith("/") ? root : root + "/";
-  return candidate.startsWith(sep);
+  const suffix = relative(root, candidate);
+  return suffix === "" || (!isAbsolute(suffix) && suffix !== ".." && !suffix.startsWith(".." + sep));
 }
 
 function matchHost(pattern: string, host: string): boolean {

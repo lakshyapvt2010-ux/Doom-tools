@@ -44,3 +44,14 @@ This uses disposable local repositories and a local mock model. It does not cert
 - Git commit identity missing: configure `user.name` and `user.email` locally in the intended repository. The runtime never invents an author.
 
 See [compatibility.md](compatibility.md), [approvals.md](approvals.md) and [observability.md](observability.md) for tested versions, cancellation and limits.
+
+## Independent plain TypeScript project, before publication
+
+A real package-consumer check is available without pretending the proposed npm
+scope is published. Run `pnpm build && node scripts/check-local-install.mjs` from
+this checkout. It packs core/runtime/security, copies the starter into a new
+folder outside the monorepo, installs the local tarballs with explicit overrides,
+compiles strict TypeScript, and invokes the tool. The check prints the resulting
+folder for inspection and never publishes a package. See
+[the starter](../templates/custom-tool/README.md). This automated check does not
+replace the PRD's external-developer first-use trial.

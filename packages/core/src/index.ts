@@ -4,8 +4,7 @@
  *
  * Maps to PRD sections 8.3 (contract), 8.4 (result/error model) and 11
  * (custom tool SDK). Validation, policy, approvals, selection, isolation,
- * tracing and audit live in @agentic-tools/runtime / @agentic-tools/security
- * (not yet built; gated by the PRD section 20 review).
+ * tracing and audit live in @agentic-tools/runtime / @agentic-tools/security.
  */
 
 export type {
@@ -42,3 +41,5 @@ export type { DefineToolOptions } from "./define-tool.js";
 
 export { defineZodTool } from "./zod.js";
 export type { DefineZodToolOptions, ZodLike } from "./zod.js";
+
+export type { SchemaInput } from "./schema-input.js";

@@ -111,9 +111,26 @@ test("cancelled approval is removed; late allow cannot execute or become remembe
   assert.equal(again.status === "error" && again.error.code, "approval_required");
 });
 
-test("malformed registered schema returns an envelope and complete trace", async (t) => {
-  const toolkit = setup(t, [{ ...echo, inputSchema: { type: "not-a-type" } } as ToolDefinition]);
-  const result = await toolkit.invoke(echo.name, {});
-  assert.equal(result.status === "error" && result.error.code, "validation");
-  assert.equal(toolkit.traceRecords().length, 1);
+test("malformed schemas fail during registration before any invocation", (t) => {
+  assert.throws(() => setup(t, [{ ...echo, inputSchema: { type: "not-a-type" } } as ToolDefinition]), /schema/);
+});
+
+
+test("trace snapshots cannot alter stored outcome evidence", async t => {
+  const toolkit = setup(t);
+  await toolkit.invoke("observe.echo", { text: "ok" });
+  const first = toolkit.traceRecords();
+  first[0]!.tool.name = "changed";
+  first[0]!.status = "error";
+  assert.equal(toolkit.traceRecords()[0]?.tool.name, "observe.echo");
+  assert.equal(toolkit.traceRecords()[0]?.status, "success");
+});
+
+
+test("raw tool definitions cannot leak arbitrary exception diagnostics", async t => {
+  const tool = { ...echo, execute: async () => { throw new Error("unregistered-private-error-canary"); } } as ToolDefinition;
+  const toolkit = setup(t, [tool]);
+  const result = await toolkit.invoke(tool.name, { text: "ok" });
+  assert.equal(result.status === "error" && result.error.code, "execution_error");
+  assert.ok(!JSON.stringify([result, toolkit.auditEvents(), toolkit.traceRecords()]).includes("unregistered-private-error-canary"));
 });

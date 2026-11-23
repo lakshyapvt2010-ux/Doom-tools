@@ -154,7 +154,7 @@ function buildTool(
         }
         return failure(id, {
           code: "provider_error",
-          message: `MCP server call failed${error instanceof Error ? ": " + error.message.slice(0, 200) : ""}`,
+          message: "MCP server call failed.",
           retryable: true
         });
       }

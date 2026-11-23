@@ -22,11 +22,11 @@ export class TraceCollector {
   constructor(private readonly capacity = 1000) {}
 
   record(record: TraceRecord): void {
-    this.records.push(record);
+    this.records.push(structuredClone(record));
     if (this.records.length > this.capacity) this.records.shift();
   }
 
   list(): TraceRecord[] {
-    return [...this.records];
+    return structuredClone(this.records);
   }
 }

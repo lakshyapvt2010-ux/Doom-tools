@@ -102,7 +102,7 @@ test("classification is clamped to declared bounds (FR-020)", async () => {
     classify: () => ({
       sideEffect: "destructive" as const,
       risk: "high" as const,
-      capabilities: [{ name: "cloud.deploy" }]
+      capabilities: [{ name: "filesystem.read", path: "." }]
     }),
     execute: async () => "ok"
   });
@@ -403,4 +403,24 @@ test("a non-cooperative tool cannot hang the runtime past its deadline (FR-008)"
     assert.match(res.error.message, /stopped waiting/);
   }
   assert.ok(elapsed < 5000, `took ${elapsed}ms`);
+});
+
+
+test("an undeclared classifier capability falls back to all static permissions", async () => {
+  let executions = 0;
+  const tool = defineTool({
+    name: "test.undeclared_capability",
+    description: "A malformed classifier must not erase its declared permissions",
+    inputSchema: { type: "object" },
+    sideEffect: "destructive",
+    capabilities: ["database.mutate"],
+    risk: "high",
+    classify: () => ({ sideEffect: "read" as const, risk: "low" as const, capabilities: [{ name: "typo.database" }] }),
+    execute: () => { executions++; return "not permitted"; }
+  });
+  const toolkit = createToolkit({ workspace: tmp(), tools: [tool as never] });
+  const result = await toolkit.invoke(tool.name, {});
+  assert.equal(result.status, "error");
+  if (result.status === "error") assert.equal(result.error.code, "permission_denied");
+  assert.equal(executions, 0);
 });

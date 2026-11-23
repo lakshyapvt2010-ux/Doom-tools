@@ -140,3 +140,16 @@ test("policy evaluation returns approval decision with the triggering rule", () 
   assert.equal(d.kind, "approval");
   if (d.kind === "approval") assert.match(d.rule, /filesystem\.write/);
 });
+
+
+test("native path boundaries handle platform separators and sibling prefixes", async () => {
+  const { resolve, sep } = await import("node:path");
+  const root = resolve("workspace");
+  assert.equal(isPathWithin(root, root + sep + "file.txt"), true);
+  assert.equal(isPathWithin(root, root + "-outside" + sep + "file.txt"), false);
+  assert.equal(isPathWithin(root, resolve(root, "..", "escape.txt")), false);
+  if (process.platform === "win32") {
+    assert.equal(isPathWithin("C:\\Work", "c:\\work\\file.txt"), true);
+    assert.equal(isPathWithin("C:\\Work", "D:\\Work\\file.txt"), false);
+  }
+});

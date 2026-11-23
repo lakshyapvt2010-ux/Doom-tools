@@ -113,9 +113,9 @@ export function failure(
 /**
  * Map an arbitrary thrown value onto the stable error model (PRD 8.3:
  * defineTool maps thrown errors so authors need no explicit envelope).
- * ToolError keeps its code and message - that is the intentional
- * disclosure path. Anything else becomes a generic execution_error; its
- * message is forwarded verbatim, so treat unknown throws as model-visible.
+ * ToolError keeps its code and message as the intentional disclosure path.
+ * Arbitrary exceptions get a stable generic message; their text, cause and
+ * stack may contain unknown secrets and are not model-facing diagnostics.
  */
 export function toFailure(
   tool: { name: string; version: string },
@@ -128,14 +128,7 @@ export function toFailure(
     if (err.details !== undefined) shape.details = err.details;
     return failure(tool, shape, extra);
   }
-  // Unknown errors become a generic execution_error. The original message
-  // is forwarded VERBATIM: this is a deliberate DX tradeoff, not a safety
-  // guarantee. Authors must keep secrets, paths and environment values out
-  // of thrown messages; the runtime's redaction layer (PRD 9.1, out of
-  // scope for this package) is the mitigation, not this mapping. The stack
-  // trace is never copied into the envelope.
-  const message =
-    err instanceof Error && err.message ? err.message : "Tool execution failed.";
+  const message = "Tool execution failed. Use an intentional ToolError for safe diagnostics.";
   return failure(tool, { code: "execution_error", message }, extra);
 }
 

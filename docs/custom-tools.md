@@ -21,9 +21,9 @@ export const searchUsers = defineTool({
 ```
 
 - Return a plain value; it is wrapped in a success envelope. Throw to fail; unknown errors
-  become `execution_error` with the message forwarded **verbatim** (keep secrets and paths
-  out of thrown messages). `ToolError` is the intentional disclosure path: code and message
-  pass through exactly.
+  become `execution_error` with a generic message, not the arbitrary exception text,
+  stack or cause. `ToolError` is the intentional disclosure path: supply a safe code and
+  message, never raw provider diagnostics or secret values.
 - Return `success(...)`/`failure(...)` envelopes yourself when you need warnings, timing,
   metadata or an explicit truncation marker.
 - `ctx.services` contains only host-registered services your tool declared a capability
@@ -45,3 +45,24 @@ policy, approvals, tracing, budgets and audit apply automatically (PRD 11).
 
 Invoke through a toolkit in a temp workspace; or call `definition.execute(input, ctx)`
 directly with a stub `ToolContext` for pure unit tests (see `packages/*/test/*.test.ts`).
+
+Inline literal JSON Schemas infer input types in `defineTool` without a manual
+input generic. Required and optional object fields, nested objects, arrays,
+primitive types, nullable type arrays, enum/const and anyOf/oneOf unions are
+covered. Widened schemas, references and unsupported inference constructs remain
+unknown rather than pretending to infer them. Runtime JSON Schema validation is
+still required; TypeScript types are not an authorization or validation boundary.
+Explicit input/output generics remain supported. Exported `SchemaInput<S>` can
+also be used in host code.
+
+### Registration validation and versions
+
+The runtime rejects malformed metadata and invalid or unsupported input/output
+schemas before inserting a tool. It compiles JSON Schema draft-07 with Ajv; it
+does not load remote references. Tool authors should use SemVer versions.
+Latest-version resolution follows SemVer precedence, including prereleases and
+ignoring build metadata. Imported tools may retain opaque version identifiers
+(such as `mcp-remote`); those sort lexically below SemVer versions and remain
+resolvable by exact identifier. The stricter lowercase naming rule in
+`defineTool` is an authoring convention; imported MCP identifiers may include
+uppercase letters and hyphens.

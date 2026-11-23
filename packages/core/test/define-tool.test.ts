@@ -163,17 +163,15 @@ test("ToolError is the intentional disclosure path: code and message pass throug
   }
 });
 
-test("unknown throws become execution_error with the message forwarded verbatim", async () => {
-  // Pins the documented behavior: messages of arbitrary throws are
-  // model-visible as-is. Authors must keep secrets and paths out of thrown
-  // messages; redaction is the runtime's layer (PRD 9.1), not core's.
+test("unknown throws become execution_error without exposing their message", async () => {
+  // Unknown exception messages are not an intentional disclosure path.
   const tool = defineTool({
     name: "thing.run",
     description: "Run a thing",
     inputSchema: { type: "object" },
     sideEffect: "write",
     execute: () => {
-      throw new Error("underlying provider said no");
+      throw new Error("unregistered-private-canary /home/private/provider.env");
     }
   });
 
@@ -181,7 +179,8 @@ test("unknown throws become execution_error with the message forwarded verbatim"
   assert.equal(result.status, "error");
   if (result.status === "error") {
     assert.equal(result.error.code, "execution_error");
-    assert.equal(result.error.message, "underlying provider said no");
+    assert.equal(result.error.message, "Tool execution failed. Use an intentional ToolError for safe diagnostics.");
+    assert.doesNotMatch(JSON.stringify(result), /unregistered-private-canary|provider\.env/);
     assert.ok(!("stack" in result.error));
     assert.ok(!("cause" in result.error));
   }
