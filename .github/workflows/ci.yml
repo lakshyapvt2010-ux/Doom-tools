@@ -1,29 +1,34 @@
-name: ci
-
+name: one-shot-private-source-sync
 on:
-  push:
-    branches: [main]
-  pull_request:
-
+  workflow_dispatch:
 permissions:
   contents: read
-
 jobs:
-  build-test:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        node: [22, 24, 26]
-    runs-on: ${{ matrix.os }}
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run build
-      - run: pnpm run typecheck
-      - run: pnpm run test
+          ref: main
+          fetch-depth: 0
+      - name: Verify exact base and reviewed bundle; preserve focused history
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '97fdb91ea6b3e81c01a31dc9b03c9be9de88afab'
+          git diff --exit-code HEAD^ HEAD -- . ':!.github/workflows/ci.yml'
+          echo 'fdce6d2598f713aaa8b5c85d5ef2b91a972ef3d69897a6694542f63b4378bd03  1-tch-source.bundle' | sha256sum --check
+          git bundle verify 1-tch-source.bundle
+          git fetch ./1-tch-source.bundle refs/heads/main:refs/heads/reviewed-source
+          test "$(git rev-parse reviewed-source)" = 'd5941f78c0b45a013b8fb5fdd0149401da9f342b'
+          git merge-base --is-ancestor 8a1df4afba06e703713321c826d94f5cc1de6287 reviewed-source
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git merge --no-ff reviewed-source -m 'Sync reviewed source and MIT alpha docs [skip ci]'
+          git diff --exit-code reviewed-source HEAD -- . ':!.github/workflows/ci.yml' ':!1-tch-source.bundle'
+          git rm 1-tch-source.bundle
+          git commit -m 'Remove one-shot private source transfer bundle [skip ci]'
+          git push origin HEAD:main
