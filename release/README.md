@@ -140,5 +140,5 @@ CI coverage had explicit database and hostname skips.
 
 ## License
 
-MIT. Copyright (c) 2026 Adarsh Chauhan. See `LICENSE` for permissions and terms.
+MIT. Copyright (c) 2026 Lakshya Singh. See `LICENSE` for permissions and terms.
 Dependencies retain their own licenses.
