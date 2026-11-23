@@ -1,8 +1,31 @@
 # Validation status
 
-This is a P0 prototype with partial P1/P2 extensions for review, aligned to the supplied PRD v0.2 dated November 9, 2026. It is not an alpha release or evidence of demand. The original prototype is preserved in the preceding baseline commit.
+This is a P0 prototype with partial P1/P2 extensions for review, aligned to the supplied PRD v0.2 dated November 9, 2026. The source includes the published npm alpha, but publication is not evidence of demand. The original prototype is preserved in the preceding baseline commit.
 
-## Current local checkpoint, November 23
+## Verified source CI, November 23, 2026
+
+[Run 17](https://github.com/MRIARC-08/tch-/actions/runs/45189379629) at `0782a88` passed all eight jobs:
+- Ubuntu and macOS, each on Node 22/24/26: build, strict typecheck and test suites.
+- Native Windows Node 22.23.5: build/typecheck and dedicated filesystem/Git
+  acceptance covering reads/writes, absolute/relative paths, commit/branch/switch,
+  traversal/junction denial, search and cancellation. This is not the full
+  Linux/macOS suite and does not certify other tools on Windows.
+- Real Linux Docker acceptance: workspace write, non-root user, read-only root,
+  no host path/socket exposure, no external interface, bounded filesystem,
+  timeout/cancellation and no remaining containers.
+
+Earlier Windows runs failed closed on equivalent short/long path aliases.
+Native realpath canonicalization fixed the mismatch without bypassing the
+workspace boundary. Remote Git runner bytes match the reviewed local source.
+PostgreSQL server coverage remains from the earlier local throwaway-cluster
+runs, not the remote matrix. Latest local rerun: 285 pass, 2 PostgreSQL skips;
+the earlier three-version local checkpoint had 287 pass and zero skips.
+No hosted model, independent security review or external developer trial is
+claimed. Docker passing checks are not proof of an escape-free sandbox.
+The published `@mriarc/tch-tools@0.1.0-alpha.2` is unchanged; these later source
+fixes and CI checks have not been republished to npm.
+
+## Earlier local checkpoint, November 23
 
 Checkpoint bd13a0c has **287 passing
 tests on Linux Node 22.23.5, 24.22.3 and 26.13.1**, zero failures, cancellations
@@ -30,23 +53,13 @@ adversarial tests passed per job. This verifies the cleanup fix on macOS at that
 checkpoint, not newer unpushed code. Run 10 below is retained as historical
 failure evidence.
 
-### P1 validation still pending
+### Environment-check history
 
-Docker implementation is opt-in and separate from host Bash, documented in
-[docs/docker.md](docs/docker.md). A task-local Docker daemon and image import
-worked, but real container startup failed because cgroups were not delegated.
-No container isolation check passed locally. The real acceptance script awaits
-a Docker-capable environment. No privileged workaround was attempted.
-
-Windows preparation fixes native policy separators and Git environment/null
-device handling. `scripts/check-platform-files-git.mjs` is ready for native
-acceptance, but no Windows runner result exists. Neither portable TypeScript
-nor Linux tests certify Windows.
-
-The current CI-extension decision is pending. No workflow changes, fresh token,
-new remote write or new run was used for these local commits. Existing paid
-billing settings were not changed. No publication, deployment, hosted model
-access or outreach took place.
+Local Docker startup was blocked by undelegated cgroups. The later authorized
+GitHub Actions Docker run above supplies real-container evidence. No privileged
+local workaround was attempted. Source sync preserved the focused history and
+removed its temporary transfer payload. Normal CI uses read-only repository
+permissions. MIT alpha publication is separate from source validation.
 
 ## Remote CI run 10, inspected November 23, 2026
 
