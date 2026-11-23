@@ -1,7 +1,7 @@
 /** Native filesystem/Git acceptance. Run on each OS before claiming support. */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createToolkit } from '../packages/runtime/dist/src/index.js';
@@ -11,6 +11,7 @@ const base=mkdtempSync(join(tmpdir(),'agentic-native-'));const root=join(base,'w
 const run=(args)=>execFileSync('git',args,{cwd:root,encoding:'utf8'});
 try {
  run(['init','-b','main']);run(['config','user.name','Native Test']);run(['config','user.email','native@example.invalid']);
+ if(process.platform==='win32'){const discovered=run(['rev-parse','--show-toplevel']);console.log('Native path diagnostic '+JSON.stringify({workspace:root,canonicalWorkspace:realpathSync(root),discovered,canonicalDiscovered:realpathSync(resolve(discovered.trim()))}));}
  const toolkit=createToolkit({workspace:root,tools:[...filesystem({only:['read','write','search','list','edit']}),...git({only:['status','diff','log','branches','add','commit','branch','switch','reset']})]});
  async function ok(name,input){const r=await toolkit.invoke(name,input);assert.equal(r.status,'success',JSON.stringify(r));return r.output;}
  async function denied(input){const r=await toolkit.invoke('filesystem.read',input);assert.equal(r.status==='error'&&r.error.code,'permission_denied',JSON.stringify(r));}
