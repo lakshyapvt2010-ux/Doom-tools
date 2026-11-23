@@ -15,7 +15,7 @@ Requires Node.js 22, 24 or 26. macOS/Linux are the intended platforms. Git tools
 need `git`; trusted-host shell tools need `bash`.
 
 ```sh
-npm install agentic-tools@alpha
+npm install @mriarc/tch-tools@alpha
 ```
 
 This single package includes the runtime and selected tools. No separate
@@ -27,7 +27,7 @@ this package or its subpaths, as listed below.
 Save as `example.mjs` in a directory containing a README.md:
 
 ```js
-import { createToolkit, filesystem } from 'agentic-tools';
+import { createToolkit, filesystem } from '@mriarc/tch-tools';
 
 const toolkit = createToolkit({
   workspace: process.cwd(),
@@ -45,7 +45,7 @@ even if the model guesses their names. Paths outside the workspace are denied.
 ## Writing files and requesting approval
 
 ```js
-import { createToolkit, filesystem, callbackApprover } from 'agentic-tools';
+import { createToolkit, filesystem, callbackApprover } from '@mriarc/tch-tools';
 const toolkit = createToolkit({
   workspace: process.cwd(),
   tools: filesystem({ only: ['read', 'write'] }),
@@ -70,15 +70,15 @@ model-controlled permission switch.
 Create `agentic.config.mjs`:
 
 ```js
-import { filesystem } from 'agentic-tools/filesystem';
+import { filesystem } from '@mriarc/tch-tools/filesystem';
 export default { workspace: process.cwd(), tools: filesystem() };
 ```
 
 ```sh
-npx agentic-tools doctor
-npx agentic-tools validate --config agentic.config.mjs
-npx agentic-tools tools list --config agentic.config.mjs --tokens
-npx agentic-tools serve --config agentic.config.mjs
+npx @mriarc/tch-tools doctor
+npx @mriarc/tch-tools validate --config agentic.config.mjs
+npx @mriarc/tch-tools tools list --config agentic.config.mjs --tokens
+npx @mriarc/tch-tools serve --config agentic.config.mjs
 ```
 
 The last command speaks MCP over stdio. Point a compatible MCP application's
@@ -90,7 +90,7 @@ has been verified. Do not print your application's own logs to MCP stdout.
 
 | Import | Purpose |
 | --- | --- |
-| `agentic-tools` | Core helpers, runtime, security, filesystem, Git and Bash factories |
+| `@mriarc/tch-tools` | Core helpers, runtime, security, filesystem, Git and Bash factories |
 | `/core`, `/runtime`, `/security` | Canonical contract, execution and policy |
 | `/filesystem`, `/git`, `/bash` | Read/edit files, Git operations, explicit trusted-host shell |
 | `/adapter-mcp`, `/mcp-client` | MCP server and external untrusted tool client |
@@ -104,7 +104,7 @@ Example Vercel wiring:
 
 ```js
 import { jsonSchema } from 'ai';
-import { toVercelAI } from 'agentic-tools/adapter-vercel';
+import { toVercelAI } from '@mriarc/tch-tools/adapter-vercel';
 const tools = toVercelAI(toolkit, {
   wrapSchema: jsonSchema,
   nameForTool: name => name.replaceAll('.', '_')

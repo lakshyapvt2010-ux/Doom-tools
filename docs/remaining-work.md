@@ -39,8 +39,11 @@ a roadmap, not an instruction to build every integration it lists.
   external developer has demonstrated the section-18 first-use gate.
 - The competitive desk review is complete, but the 5-10 developer conversations,
   demand evidence and go/no-go decision remain open. No outreach was performed.
-- Independent security review, release provenance checks, license and
-  support-policy decisions are not complete. No packages published or deployed.
+- Independent security review, release provenance checks and a support policy
+  remain open. The owner approved MIT and published `@mriarc/tch-tools`
+  `0.1.0-alpha.2`; both `latest` and `alpha` tags select it. Browser and Docker
+  are excluded from that npm artifact. Native environment checks below do not
+  change the published artifact or establish production certification.
 
 ## Decisions that must stay explicit
 
@@ -48,8 +51,9 @@ a roadmap, not an instruction to build every integration it lists.
   credentials or incurring provider costs is a separate decision.
 - A tokenizer hook supports exact model-specific counting, but no default model
   or tokenizer was chosen; the fallback estimate is approximate.
-- License, publishing, deployment, interviews and any paid provider evaluation
-  require separate owner decisions. Nothing here selects them automatically.
+- Future publication, deployment, interviews and paid provider evaluation require
+  separate owner decisions. MIT and the existing alpha publication are approved;
+  nothing here authorizes a later release or new spending.
 - Changes remain focused commits and existing pushed history is preserved.
   Documentation is not permission for a remote write or a fresh credential.
   Later releases can choose a different review structure.

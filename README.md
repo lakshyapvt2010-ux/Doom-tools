@@ -8,7 +8,8 @@ or framework exposes the tools.
 > Status: **P0 prototype for review**, built to PRD v0.2. The PRD's section 20 go/no-go
 > gate (competitor review + developer interviews) has NOT been completed; see
 > [VALIDATION.md](VALIDATION.md) for exactly what that means before adopting any of this.
-> License is undecided (`UNLICENSED` placeholder; PRD open decision 21.9).
+> Released npm alpha: `@mriarc/tch-tools@0.1.0-alpha.2`, under the MIT license.
+> The source monorepo includes experimental packages excluded from the npm build.
 
 ## What it is
 
@@ -36,8 +37,15 @@ the OpenAI Agents SDK or MCP. It supplies capabilities those systems can invoke.
 
 ## Quickstart
 
-These packages are unpublished prototypes. Use this checkout and its workspace
-packages; proposed npm names are not a verified public installation source.
+For the published single-package alpha:
+
+```bash
+npm install @mriarc/tch-tools
+```
+
+The `latest` and `alpha` npm tags currently select `0.1.0-alpha.2`. See
+[the package guide](release/README.md) for usage. The `@agentic-tools/*` names below
+are source-workspace packages, not separately published npm packages. For source development:
 
 ```bash
 pnpm install
