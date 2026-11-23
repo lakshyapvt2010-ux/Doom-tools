@@ -28,7 +28,7 @@ function canonicalize(target: string, depth = 0): string {
     remainder.unshift(basename(current));
     current = parent;
   }
-  const base = existsSync(current) ? realpathSync(current) : current;
+  const base = existsSync(current) ? realpathSync.native(current) : current;
   return remainder.length ? join(base, ...remainder) : base;
 }
 
@@ -42,7 +42,7 @@ export function resolveRepo(ctx: ToolContext, inputPath?: string): string {
   const target = inputPath !== undefined && isAbsolute(inputPath)
     ? resolve(inputPath) : resolve(ctx.workspace, inputPath ?? ".");
   const canonical = canonicalize(target);
-  if (!isWithin(realpathSync(ctx.workspace), canonical)) {
+  if (!isWithin(realpathSync.native(ctx.workspace), canonical)) {
     throw new ToolError("permission_denied", `Repository path "${inputPath ?? "."}" resolves outside the workspace root.`);
   }
   return canonical;
@@ -54,7 +54,7 @@ export function assertSafeRef(ref: string, what = "ref"): void {
 export function assertSafePathspec(workspaceRoot: string, repo: string, path: string): string {
   if (path.startsWith("-")) throw new ToolError("validation", `Pathspec must not start with "-": ${JSON.stringify(path)}.`);
   const target = isAbsolute(path) ? resolve(path) : resolve(repo, path);
-  if (!isWithin(realpathSync(workspaceRoot), canonicalize(target))) {
+  if (!isWithin(realpathSync.native(workspaceRoot), canonicalize(target))) {
     throw new ToolError("permission_denied", `Pathspec "${path}" resolves outside the workspace.`);
   }
   return path;
@@ -100,7 +100,7 @@ export async function runGit(ctx: ToolContext, repo: string, args: string[]): Pr
   // Git for Windows prints forward slashes; normalize before realpath so the
   // containment check compares native separators rather than rejecting the repo.
   const root = canonicalize(resolve(discovery.stdout.replace(/\r?\n$/, "")));
-  if (!isWithin(realpathSync(ctx.workspace), root)) {
+  if (!isWithin(realpathSync.native(ctx.workspace), root)) {
     throw new ToolError("permission_denied", "Git discovered a repository root outside the configured workspace. Choose the repository root as the workspace explicitly.");
   }
   return executeGit(ctx, repo, args);
