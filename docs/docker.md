@@ -1,9 +1,10 @@
-# Docker shell (P1, validation pending)
+# Docker shell (P1, limited real-container validation)
 
 `@agentic-tools/docker` is an explicit opt-in tool factory, separate from host
-Bash. It is not a substitute for a completed security review. Real container
-acceptance is pending in a Docker-capable environment. Local executable-double
-tests check arguments and failure handling, not kernel isolation.
+Bash. It is not a substitute for a completed security review. Real Linux container acceptance passed in
+[run17](https://github.com/MRIARC-08/tch-/actions/runs/45189379629). Local executable-double
+tests check arguments and failure handling, not kernel isolation. The published
+npm alpha excludes this package.
 
 ```ts
 import { dockerShell } from '@agentic-tools/docker';
