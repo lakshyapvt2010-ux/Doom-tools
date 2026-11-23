@@ -5,13 +5,9 @@ a roadmap, not an instruction to build every integration it lists.
 
 ## Implementation and environment gaps
 
-- PRD 14.2 Docker execution backend: implementation and six executable-double
-  tests exist, but real container acceptance is pending. A local Docker daemon
-  and image import succeeded; container startup failed on undelegated cgroups.
-  See docs/docker.md and scripts/check-docker-integration.mjs. No host fallback.
-- PRD 14.2 Windows filesystem/Git: native path-policy and Git portability fixes
-  plus a native acceptance script exist. No Windows runner has been used, so
-  support is not yet claimed.
+- Docker and native Windows filesystem/Git acceptance passed in run17. Wider
+  Windows tool support, other Docker host platforms and independent security
+  certification remain unclaimed. Source changes are not a new npm release.
 - Strict arbitrary transport-wire budgets remain open. Whole runtime results
   and MCP CallToolResult representations have byte/token caps, including errors,
   warnings, duplicate MCP content and escaping. JSON-RPC/HTTP framing and
@@ -27,10 +23,8 @@ a roadmap, not an instruction to build every integration it lists.
 
 ## Validation and release gates
 
-- CI run 11 at 8a1df4a passed all six Ubuntu/macOS Node22/24/26 jobs, including
-  Chrome cleanup. Two PostgreSQL server tests skipped everywhere, and one
-  loopback-hostname check skipped on macOS. Newer local fixes are not covered.
-  Latest local Linux matrix: 287 pass per Node22/24/26, zero skips, real PostgreSQL.
+- Current source passed all eight jobs in [run17](https://github.com/MRIARC-08/tch-/actions/runs/45189379629).
+  See VALIDATION.md for scope, earlier failures and skipped database coverage.
 - Named desktop MCP clients and hosted model behavior remain untested. Local
   SDK mock/scripted models validate execution mechanics, not autonomous quality.
 - A fresh source checkout passes frozen-lockfile installation from a cached
