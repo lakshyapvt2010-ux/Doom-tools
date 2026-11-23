@@ -376,7 +376,7 @@ importers:
         specifier: workspace:*
         version: link:../security
       ajv:
-        specifier: ^8.17.1
+        specifier: ^8.20.0
         version: 8.20.0
     devDependencies:
       '@types/node':
