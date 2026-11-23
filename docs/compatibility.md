@@ -4,30 +4,43 @@
 
 The supported Node majors for this prototype are 22, 24 and 26 on macOS/Linux. Node 20 is end-of-life and is no longer in the supported matrix. This follows the [official Node release table](https://nodejs.org/en/about/previous-releases), checked November 22, 2026. Package engines require Node >=22; the CLI checks the declared major-version matrix rather than claiming every newer version is supported.
 
-Per-tool platform matrix (PRD sections 14 and 22). CI run 11 at 8a1df4a passed
-all six Ubuntu/macOS Node22/24/26 jobs. Each Ubuntu job had 269 pass/2 skip;
-each macOS job had 268 pass/3 skip. PostgreSQL server tests skipped everywhere,
-and a loopback-hostname test skipped on macOS. All browser/adversarial tests
-passed. Run: https://github.com/MRIARC-08/tch-/actions/runs/45058558875 .
+## Verified source CI, November 23, 2026
 
-Newer local code passes 287 tests per Linux Node22/24/26, zero skips and real
-PostgreSQL. Those local changes have no newer remote result. Native Windows
-path/Git preparations and an acceptance script are present but unverified there.
+[Run 17](https://github.com/MRIARC-08/tch-/actions/runs/45189379629) at `0782a88` passed all eight jobs:
+- Ubuntu and macOS, each on Node 22/24/26: build, strict typecheck and test suites.
+- Native Windows Node 22.23.5: build/typecheck and dedicated filesystem/Git
+  acceptance covering reads/writes, absolute/relative paths, commit/branch/switch,
+  traversal/junction denial, search and cancellation. This is not the full
+  Linux/macOS suite and does not certify other tools on Windows.
+- Real Linux Docker acceptance: workspace write, non-root user, read-only root,
+  no host path/socket exposure, no external interface, bounded filesystem,
+  timeout/cancellation and no remaining containers.
+
+Earlier Windows runs failed closed on equivalent short/long path aliases.
+Native realpath canonicalization fixed the mismatch without bypassing the
+workspace boundary. Remote Git runner bytes match the reviewed local source.
+PostgreSQL server coverage remains from the earlier local throwaway-cluster
+runs, not the remote matrix. Latest local rerun: 285 pass, 2 PostgreSQL skips;
+the earlier three-version local checkpoint had 287 pass and zero skips.
+No hosted model, independent security review or external developer trial is
+claimed. Docker passing checks are not proof of an escape-free sandbox.
+The published `@mriarc/tch-tools@0.1.0-alpha.2` is unchanged; these later source
+fixes and CI checks have not been republished to npm.
 
 | Tool or package | Linux | macOS | Windows | Notes |
 | --- | --- | --- | --- | --- |
 | core, runtime, security, CLI | tested locally and CI | CI | untested | Pure Node. |
 | adapter-mcp (stdio and Streamable HTTP), adapter-vercel | tested locally and CI | CI | untested | HTTP binds to loopback by default. |
-| adapter-langchain, adapter-openai-agents | tested locally | CI at 8a1df4a; newer changes unverified | untested | Real SDK and native approval loops; no hosted provider. |
-| mcp-client, testing | tested locally and CI | CI at 8a1df4a | untested | In-memory, real stdio spawn and HTTP connection tests are included. |
-| filesystem.* | tested locally and CI | CI | not supported at P0 | Path and symlink semantics differ on Windows; not evaluated. |
-| git.* | tested locally and CI | CI | not supported at P0 | Needs a host `git` binary. Not a sandbox. |
+| adapter-langchain, adapter-openai-agents | tested locally | CI run17 | untested | Real SDK and native approval loops; no hosted provider. |
+| mcp-client, testing | tested locally and CI | CI run17 | untested | In-memory, real stdio spawn and HTTP connection tests are included. |
+| filesystem.* | tested locally and CI | CI | limited source acceptance | Native Node22 script covers paths/junction denial; not the full suite or current npm alpha. |
+| git.* | tested locally and CI | CI | limited source acceptance | Native Node22 commit/branch/switch passed; needs host Git. Not a sandbox. |
 | web.fetch | tested locally and CI | CI, with one hostname-resolution skip | untested | Uses node:http/node:https; no proxy support. |
 | sqlite.query | tested locally and CI | CI | untested | Needs `node:sqlite` (Node 22.5+ with no flag in the tested versions; experimental). |
 | postgres.query | server tested locally; 2 CI skips | server tests skipped in CI | untested | Real server tests need initdb/pg_ctl. CI ran the pure validation case only; do not infer server coverage from installed runner packages. |
-| browser.* | tested locally and CI | all CI majors passed at 8a1df4a | untested | Cleanup fix verified in run 11. Needs Chrome. Per-request checks do not close DNS rebinding or guarantee private-network isolation. |
+| browser.* | tested locally and CI | all CI majors passed in run17 | untested | Cleanup fix verified in run 11. Needs Chrome. Per-request checks do not close DNS rebinding or guarantee private-network isolation. |
 | bash.execute (trusted host) | tested locally and CI | CI | unsupported | Spawns `bash`. No containment on any platform. |
-| Docker shell | implementation, real containers unverified | unsupported | unsupported | Six executable-double tests only. See docker.md. |
+| Docker shell | real Linux acceptance passed | unsupported | unsupported | Real-container checks in run17; see docker.md. |
 | OS-native isolation backend | not implemented | not implemented | not implemented | P2 roadmap. |
 
 CI runs Node 22, 24 and 26 on Ubuntu and macOS with read-only repository permissions. A workflow definition is not proof that its current jobs passed.
@@ -37,7 +50,7 @@ CI runs Node 22, 24 and 26 on Ubuntu and macOS with read-only repository permiss
 - Server dependency: `@modelcontextprotocol/sdk` ^1.32.2, with the resolved version locked in `pnpm-lock.yaml`.
 - Shipped transports: stdio and Streamable HTTP (`serveMcpHttp`, `agentic-tools serve --http`; see docs/adapters.md). Integration tests use an in-memory transport, and HTTP tests use the real SDK client over a loopback socket.
 - Form elicitation accept/deny and caller cancellation are covered. No named desktop client has been certified.
-- The outbound MCP client registers external tools as untrusted. In-memory, real stdio spawn and Streamable HTTP package tests completed in run 11; later local changes remain outside that run.
+- The outbound MCP client registers external tools as untrusted. In-memory, real stdio spawn and Streamable HTTP package tests completed again in run17.
 
 | Client capability | Behavior |
 | --- | --- |
