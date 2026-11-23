@@ -32,7 +32,7 @@ the OpenAI Agents SDK or MCP. It supplies capabilities those systems can invoke.
 
 ## Requirements
 
-- Node.js 22, 24 or 26, macOS or Linux. Windows is not supported at P0. See the [compatibility matrix](docs/compatibility.md).
+- Node.js 22, 24 or 26, macOS or Linux. Windows has limited source-level filesystem/Git acceptance only; the published alpha predates those fixes. See the [compatibility matrix](docs/compatibility.md).
 - pnpm 9.15+ for the monorepo.
 
 ## Quickstart
@@ -153,10 +153,12 @@ Implemented at P0 (PRD 14.1): contract/SDK, runtime, policy/approvals/redaction/
 filesystem/Git/bash tools, selection at all four levels, output budgets and truncation,
 tracing, bounded local metrics, CLI, MCP server (stdio), one framework adapter,
 adversarial/integration tests, and coding/repository examples.
-Not implemented: container/remote sandbox backends, MCP client, Streamable HTTP transport,
-HTTP/web/database/browser tools, mock/replay, Windows support, additional adapters
-(P1+ per PRD 14.2-14.4). See [VALIDATION.md](VALIDATION.md) and
-[docs/compatibility.md](docs/compatibility.md).
+Later source extensions include MCP client/Streamable HTTP, web/database/browser tools,
+mock/replay and additional adapters. Source CI passed real Linux Docker acceptance and dedicated native Windows
+filesystem/Git checks in run17. This is limited test evidence, not security
+certification; the published npm alpha is unchanged.
+Remote sandbox backends and the broader P2/P3 roadmap remain open. See
+[VALIDATION.md](VALIDATION.md) and [docs/compatibility.md](docs/compatibility.md).
 
 ## Documentation
 
