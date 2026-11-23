@@ -1,4 +1,4 @@
-# Agentic Tools
+# tch! (tch-tools)
 
 A TypeScript-first toolkit for AI applications that need reusable tools with
 permissions, human approval, audit records and output limits. It supplies tools
@@ -18,9 +18,9 @@ need `git`; trusted-host shell tools need `bash`.
 npm install agentic-tools@alpha
 ```
 
-This single package includes the runtime and selected tools. You do not need to
-install unpublished `@agentic-tools/*` packages. The detailed design guides are in `docs/`. All public imports use this package
-or its subpaths, as listed below.
+This single package includes the runtime and selected tools. No separate
+monorepo packages are needed. Detailed design guides are in `docs/`. Import
+this package or its subpaths, as listed below.
 
 ## First working example, no API key
 
