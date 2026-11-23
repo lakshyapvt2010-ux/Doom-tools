@@ -77,10 +77,27 @@ inference, private exception diagnostics, undeclared-classifier fail-closed
 fallback, registration validation and semantic-version precedence. A real
 packed-package starter compiles and invokes outside workspace links.
 
-P1 implementation now includes a separate opt-in Docker shell factory and
-Windows path/Git preparation. Docker executable-double tests do not establish
-container isolation, and no native Windows result exists. See VALIDATION.md,
-docker.md and remaining-work.md. Local matrix: 287/287 on Linux Node22/24/26;
-remote run11 covers only 8a1df4a, passing all six Ubuntu/macOS jobs with the
-explicit PostgreSQL/hostname skips. Earlier local-only/next-CI statements above
-are historical to their sections, not the current state.
+## Verified source CI, November 23, 2026
+
+[Run 17](https://github.com/MRIARC-08/tch-/actions/runs/45189379629) at `0782a88` passed all eight jobs:
+- Ubuntu and macOS, each on Node 22/24/26: build, strict typecheck and test suites.
+- Native Windows Node 22.23.5: build/typecheck and dedicated filesystem/Git
+  acceptance covering reads/writes, absolute/relative paths, commit/branch/switch,
+  traversal/junction denial, search and cancellation. This is not the full
+  Linux/macOS suite and does not certify other tools on Windows.
+- Real Linux Docker acceptance: workspace write, non-root user, read-only root,
+  no host path/socket exposure, no external interface, bounded filesystem,
+  timeout/cancellation and no remaining containers.
+
+Earlier Windows runs failed closed on equivalent short/long path aliases.
+Native realpath canonicalization fixed the mismatch without bypassing the
+workspace boundary. Remote Git runner bytes match the reviewed local source.
+PostgreSQL server coverage remains from the earlier local throwaway-cluster
+runs, not the remote matrix. Latest local rerun: 285 pass, 2 PostgreSQL skips;
+the earlier three-version local checkpoint had 287 pass and zero skips.
+No hosted model, independent security review or external developer trial is
+claimed. Docker passing checks are not proof of an escape-free sandbox.
+The published `@mriarc/tch-tools@0.1.0-alpha.2` is unchanged; these later source
+fixes and CI checks have not been republished to npm.
+
+Earlier local-only/next-CI statements above describe historical checkpoints.
