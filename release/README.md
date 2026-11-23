@@ -1,4 +1,4 @@
-# tch! (tch-tools)
+# tch!
 
 A TypeScript-first toolkit for AI applications that need reusable tools with
 permissions, human approval, audit records and output limits. It supplies tools
@@ -129,21 +129,14 @@ execution mechanics, not an agent's reasoning quality.
 - This release does not complete product research, independent security review
   or the full future PRD roadmap.
 
-## For evaluators
+## Tested scope
 
-The project demonstrates one schema-defined tool contract, enforced selection,
-per-call policy, exact-input approvals, cancellation, redaction, audit/traces and
-framework/protocol translation. It is useful for a repository assistant, a
-read-only data assistant, or wrapping external MCP tools with local policy.
-
-The independent application test installs the packed release outside the main
-workspace, repairs a deliberately broken repository fixture through real tool
-calls, runs tests and commits the fix, while checking approval and denial paths.
-Its model is scripted and disclosed, with no external API or model spending.
-See `RELEASE-VALIDATION.md` for exact evidence and limits. The reproducible app
-is included in `examples/evaluator-app`; copy it outside the installed package
-and follow its README. Its optional AI SDK5 dependency has known advisories,
-is not bundled here, and should not be adopted for production without review.
+The runtime test suite passes on Linux Node 22. A separate consuming application
+also passed on Linux Node 22/24/26 using the packaged release, strict TypeScript,
+a scripted AI SDK mock model, an MCP client/server pair, approval/denial checks
+and the CLI over MCP stdio. These tests do not certify hosted-model quality,
+native Windows, Docker isolation or production security. Earlier Linux/macOS
+CI coverage had explicit database and hostname skips.
 
 ## License
 
