@@ -94,7 +94,9 @@ export async function runGit(ctx: ToolContext, repo: string, args: string[]): Pr
   // `git -C child` otherwise discovers an enclosing repository outside the
   // workspace and can commit unrelated staged files. Check Git's actual root.
   const discovery = await executeGit(ctx, repo, ["rev-parse", "--show-toplevel"]);
-  const root = canonicalize(discovery.stdout.replace(/\r?\n$/, ""));
+  // Git for Windows prints forward slashes; normalize before realpath so the
+  // containment check compares native separators rather than rejecting the repo.
+  const root = canonicalize(resolve(discovery.stdout.replace(/\r?\n$/, "")));
   if (!isWithin(realpathSync(ctx.workspace), root)) {
     throw new ToolError("permission_denied", "Git discovered a repository root outside the configured workspace. Choose the repository root as the workspace explicitly.");
   }
